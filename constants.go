@@ -4,150 +4,603 @@ import "net/http"
 
 // MIME types that are commonly used
 const (
-	MIMETextXML                          = "text/xml"
-	MIMETextHTML                         = "text/html"
-	MIMETextPlain                        = "text/plain"
-	MIMETextJavaScript                   = "text/javascript"
-	MIMEApplicationXML                   = "application/xml"
-	MIMEApplicationJSON                  = "application/json"
-	MIMEApplicationJavaScript            = "application/javascript"
-	MIMEApplicationForm                  = "application/x-www-form-urlencoded"
-	MIMEOctetStream                      = "application/octet-stream"
-	MIMEMultipartForm                    = "multipart/form-data"
-	MIMETextXMLCharsetUTF8               = "text/xml; charset=utf-8"
-	MIMETextHTMLCharsetUTF8              = "text/html; charset=utf-8"
-	MIMETextPlainCharsetUTF8             = "text/plain; charset=utf-8"
-	MIMETextJavaScriptCharsetUTF8        = "text/javascript; charset=utf-8"
-	MIMEApplicationXMLCharsetUTF8        = "application/xml; charset=utf-8"
-	MIMEApplicationJSONCharsetUTF8       = "application/json; charset=utf-8"
+	// MIMETextXML is the MIME type for XML documents.
+	MIMETextXML = "text/xml"
+
+	// MIMETextHTML is the MIME type for HTML documents.
+	MIMETextHTML = "text/html"
+
+	// MIMETextPlain is the MIME type for plain text.
+	MIMETextPlain = "text/plain"
+
+	// MIMETextJavaScript is the MIME type for JavaScript code.
+	MIMETextJavaScript = "text/javascript"
+
+	// MIMEApplicationXML is the MIME type for XML documents,
+	// typically used for APIs or web services.
+	MIMEApplicationXML = "application/xml"
+
+	// MIMEApplicationJSON is the MIME type for JSON formatted data.
+	MIMEApplicationJSON = "application/json"
+
+	// MIMEApplicationJavaScript is the MIME type for JavaScript code,
+	// often used for APIs serving JavaScript.
+	MIMEApplicationJavaScript = "application/javascript"
+
+	// MIMEApplicationForm is the MIME type for URL-encoded form data.
+	MIMEApplicationForm = "application/x-www-form-urlencoded"
+
+	// MIMEOctetStream is the MIME type for arbitrary binary data.
+	MIMEOctetStream = "application/octet-stream"
+
+	// MIMEMultipartForm is the MIME type for multipart form data,
+	// used for form submissions that include file uploads.
+	MIMEMultipartForm = "multipart/form-data"
+
+	// MIMETextXMLCharsetUTF8 is the MIME type for XML documents
+	// using UTF-8 character encoding.
+	MIMETextXMLCharsetUTF8 = "text/xml; charset=utf-8"
+
+	// MIMETextHTMLCharsetUTF8 is the MIME type for HTML documents
+	// using UTF-8 character encoding.
+	MIMETextHTMLCharsetUTF8 = "text/html; charset=utf-8"
+
+	// MIMETextPlainCharsetUTF8 is the MIME type for plain text
+	// using UTF-8 character encoding.
+	MIMETextPlainCharsetUTF8 = "text/plain; charset=utf-8"
+
+	// MIMETextJavaScriptCharsetUTF8 is the MIME type for JavaScript
+	// code using UTF-8 character encoding.
+	MIMETextJavaScriptCharsetUTF8 = "text/javascript; charset=utf-8"
+
+	// MIMEApplicationXMLCharsetUTF8 is the MIME type for XML documents
+	// using UTF-8 character encoding.
+	MIMEApplicationXMLCharsetUTF8 = "application/xml; charset=utf-8"
+
+	// MIMEApplicationJSONCharsetUTF8 is the MIME type for JSON formatted
+	// data using UTF-8 character encoding.
+	MIMEApplicationJSONCharsetUTF8 = "application/json; charset=utf-8"
+
+	// MIMEApplicationJavaScriptCharsetUTF8 is the MIME type for JavaScript
+	// code using UTF-8 character encoding.
 	MIMEApplicationJavaScriptCharsetUTF8 = "application/javascript; charset=utf-8"
 )
 
 // HTTP Headers were copied from net/http.
 const (
-	HeaderAuthorization                      = "Authorization"
-	HeaderProxyAuthenticate                  = "Proxy-Authenticate"
-	HeaderProxyAuthorization                 = "Proxy-Authorization"
-	HeaderWWWAuthenticate                    = "WWW-Authenticate"
-	HeaderAge                                = "Age"
-	HeaderCacheControl                       = "Cache-Control"
-	HeaderClearSiteData                      = "Clear-Site-Data"
-	HeaderExpires                            = "Expires"
-	HeaderPragma                             = "Pragma"
-	HeaderWarning                            = "Warning"
-	HeaderAcceptCH                           = "Accept-CH"
-	HeaderAcceptCHLifetime                   = "Accept-CH-Lifetime"
-	HeaderContentDPR                         = "Content-DPR"
-	HeaderDPR                                = "DPR"
-	HeaderEarlyData                          = "Early-Data"
-	HeaderSaveData                           = "Save-Data"
-	HeaderViewportWidth                      = "Viewport-Width"
-	HeaderWidth                              = "Width"
-	HeaderETag                               = "ETag"
-	HeaderIfMatch                            = "If-Match"
-	HeaderIfModifiedSince                    = "If-Modified-Since"
-	HeaderIfNoneMatch                        = "If-None-Match"
-	HeaderIfUnmodifiedSince                  = "If-Unmodified-Since"
-	HeaderLastModified                       = "Last-Modified"
-	HeaderVary                               = "Vary"
-	HeaderConnection                         = "Connection"
-	HeaderKeepAlive                          = "Keep-Alive"
-	HeaderAccept                             = "Accept"
-	HeaderAcceptCharset                      = "Accept-Charset"
-	HeaderAcceptEncoding                     = "Accept-Encoding"
-	HeaderAcceptLanguage                     = "Accept-Language"
-	HeaderCookie                             = "Cookie"
-	HeaderExpect                             = "Expect"
-	HeaderMaxForwards                        = "Max-Forwards"
-	HeaderSetCookie                          = "Set-Cookie"
-	HeaderAccessControlAllowCredentials      = "Access-Control-Allow-Credentials"
-	HeaderAccessControlAllowHeaders          = "Access-Control-Allow-Headers"
-	HeaderAccessControlAllowMethods          = "Access-Control-Allow-Methods"
-	HeaderAccessControlAllowOrigin           = "Access-Control-Allow-Origin"
-	HeaderAccessControlExposeHeaders         = "Access-Control-Expose-Headers"
-	HeaderAccessControlMaxAge                = "Access-Control-Max-Age"
-	HeaderAccessControlRequestHeaders        = "Access-Control-Request-Headers"
-	HeaderAccessControlRequestMethod         = "Access-Control-Request-Method"
-	HeaderOrigin                             = "Origin"
-	HeaderTimingAllowOrigin                  = "Timing-Allow-Origin"
-	HeaderXPermittedCrossDomainPolicies      = "X-Permitted-Cross-Domain-Policies"
-	HeaderDNT                                = "DNT"
-	HeaderTk                                 = "Tk"
-	HeaderContentDisposition                 = "Content-Disposition"
-	HeaderContentEncoding                    = "Content-Encoding"
-	HeaderContentLanguage                    = "Content-Language"
-	HeaderContentLength                      = "Content-Length"
-	HeaderContentLocation                    = "Content-Location"
-	HeaderContentType                        = "Content-Type"
-	HeaderForwarded                          = "Forwarded"
-	HeaderVia                                = "Via"
-	HeaderXForwardedFor                      = "X-Forwarded-For"
-	HeaderXForwardedHost                     = "X-Forwarded-Host"
-	HeaderXForwardedProto                    = "X-Forwarded-Proto"
-	HeaderXForwardedProtocol                 = "X-Forwarded-Protocol"
-	HeaderXForwardedSsl                      = "X-Forwarded-Ssl"
-	HeaderXUrlScheme                         = "X-Url-Scheme"
-	HeaderLocation                           = "Location"
-	HeaderFrom                               = "From"
-	HeaderHost                               = "Host"
-	HeaderReferer                            = "Referer"
-	HeaderReferrerPolicy                     = "Referrer-Policy"
-	HeaderUserAgent                          = "User-Agent"
-	HeaderAllow                              = "Allow"
-	HeaderServer                             = "Server"
-	HeaderAcceptRanges                       = "Accept-Ranges"
-	HeaderContentRange                       = "Content-Range"
-	HeaderIfRange                            = "If-Range"
-	HeaderRange                              = "Range"
-	HeaderContentSecurityPolicy              = "Content-Security-Policy"
-	HeaderContentSecurityPolicyReportOnly    = "Content-Security-Policy-Report-Only"
-	HeaderCrossOriginResourcePolicy          = "Cross-Origin-Resource-Policy"
-	HeaderExpectCT                           = "Expect-CT"
-	HeaderPermissionsPolicy                  = "Permissions-Policy"
-	HeaderPublicKeyPins                      = "Public-Key-Pins"
-	HeaderPublicKeyPinsReportOnly            = "Public-Key-Pins-Report-Only"
-	HeaderStrictTransportSecurity            = "Strict-Transport-Security"
-	HeaderUpgradeInsecureRequests            = "Upgrade-Insecure-Requests"
-	HeaderXContentTypeOptions                = "X-Content-Type-Options"
-	HeaderXDownloadOptions                   = "X-Download-Options"
-	HeaderXFrameOptions                      = "X-Frame-Options"
-	HeaderXPoweredBy                         = "X-Powered-By"
-	HeaderXXSSProtection                     = "X-XSS-Protection"
-	HeaderLastEventID                        = "Last-Event-ID"
-	HeaderNEL                                = "NEL"
-	HeaderPingFrom                           = "Ping-From"
-	HeaderPingTo                             = "Ping-To"
-	HeaderReportTo                           = "Report-To"
-	HeaderTE                                 = "TE"
-	HeaderTrailer                            = "Trailer"
-	HeaderTransferEncoding                   = "Transfer-Encoding"
-	HeaderSecWebSocketAccept                 = "Sec-WebSocket-Accept"
-	HeaderSecWebSocketExtensions             = "Sec-WebSocket-Extensions"
-	HeaderSecWebSocketKey                    = "Sec-WebSocket-Key"
-	HeaderSecWebSocketProtocol               = "Sec-WebSocket-Protocol"
-	HeaderSecWebSocketVersion                = "Sec-WebSocket-Version"
-	HeaderAcceptPatch                        = "Accept-Patch"
-	HeaderAcceptPushPolicy                   = "Accept-Push-Policy"
-	HeaderAcceptSignature                    = "Accept-Signature"
-	HeaderAltSvc                             = "Alt-Svc"
-	HeaderDate                               = "Date"
-	HeaderIndex                              = "Index"
-	HeaderLargeAllocation                    = "Large-Allocation"
-	HeaderLink                               = "Link"
-	HeaderPushPolicy                         = "Push-Policy"
-	HeaderRetryAfter                         = "Retry-After"
-	HeaderServerTiming                       = "Server-Timing"
-	HeaderSignature                          = "Signature"
-	HeaderSignedHeaders                      = "Signed-Headers"
-	HeaderSourceMap                          = "SourceMap"
-	HeaderUpgrade                            = "Upgrade"
-	HeaderXDNSPrefetchControl                = "X-DNS-Prefetch-Control"
-	HeaderXPingback                          = "X-Pingback"
-	HeaderXRequestID                         = "X-Request-ID"
-	HeaderXRequestedWith                     = "X-Requested-With"
-	HeaderXRobotsTag                         = "X-Robots-Tag"
-	HeaderXUACompatible                      = "X-UA-Compatible"
-	HeaderAccessControlAllowPrivateNetwork   = "Access-Control-Allow-Private-Network"
+	// HeaderAuthorization is the HTTP header that represents the credentials
+	// that the client uses to authenticate itself when making a request
+	// to the server.
+	HeaderAuthorization = "Authorization"
+
+	// HeaderProxyAuthenticate is the HTTP header that represents the
+	// credentials that the proxy can accept for authenticating the client.
+	HeaderProxyAuthenticate = "Proxy-Authenticate"
+
+	// HeaderProxyAuthorization is the HTTP header that represents the
+	// credentials that the client uses to authenticate itself to a proxy.
+	HeaderProxyAuthorization = "Proxy-Authorization"
+
+	// HeaderWWWAuthenticate is the HTTP header that represents the method
+	// that should be used to authenticate the client to the server.
+	HeaderWWWAuthenticate = "WWW-Authenticate"
+
+	// HeaderAge is the HTTP header that represents the time in seconds
+	// the object has been in a proxy cache.
+	HeaderAge = "Age"
+
+	// HeaderCacheControl is the HTTP header that represents directives
+	// for caching mechanisms in both requests and responses.
+	HeaderCacheControl = "Cache-Control"
+
+	// HeaderClearSiteData is the HTTP header that tells the browser to
+	// clear various types of cached data (cookies, storage, etc.).
+	HeaderClearSiteData = "Clear-Site-Data"
+
+	// HeaderExpires is the HTTP header that represents the date/time
+	// after which the response is considered stale.
+	HeaderExpires = "Expires"
+
+	// HeaderPragma is the HTTP header that represents implementation-specific
+	// directives that might apply to any agent along the request/response
+	// chain.
+	HeaderPragma = "Pragma"
+
+	// HeaderWarning is the HTTP header that represents general warning
+	// information about possible problems.
+	HeaderWarning = "Warning"
+
+	// HeaderAcceptCH is the HTTP header that represents the client hints
+	// that the server is willing to accept.
+	HeaderAcceptCH = "Accept-CH"
+
+	// HeaderAcceptCHLifetime is the HTTP header that represents the lifetime
+	// of the client hints that the server supports.
+	HeaderAcceptCHLifetime = "Accept-CH-Lifetime"
+
+	// HeaderContentDPR is the HTTP header that represents the device pixel
+	// ratio (DPR) of the client's device.
+	HeaderContentDPR = "Content-DPR"
+
+	// HeaderDPR is the HTTP header that represents the client's device pixel
+	// ratio for content negotiation.
+	HeaderDPR = "DPR"
+
+	// HeaderEarlyData is the HTTP header that represents the indication that
+	// the request has been made with early data.
+	HeaderEarlyData = "Early-Data"
+
+	// HeaderSaveData is the HTTP header that represents the client's
+	// preference for data saving, useful for clients in data-saving mode.
+	HeaderSaveData = "Save-Data"
+
+	// HeaderViewportWidth is the HTTP header that represents the width of
+	// the viewport in pixels, a hint to help the server select optimized
+	// content for the device.
+	HeaderViewportWidth = "Viewport-Width"
+
+	// HeaderWidth is the HTTP header that represents the width of the
+	// requested resource, a hint that allows servers to serve different
+	// versions based on the content width.
+	HeaderWidth = "Width"
+
+	// HeaderETag is the HTTP header that represents the entity tag of the
+	// resource, a mechanism for cache validation and conditional requests.
+	HeaderETag = "ETag"
+
+	// HeaderIfMatch is the HTTP header that makes the request method
+	// conditional on the resource's ETag matching one of the listed ETags.
+	HeaderIfMatch = "If-Match"
+
+	// HeaderIfModifiedSince is the HTTP header that makes the request
+	// method conditional on the resource being modified after the
+	// specified date.
+	HeaderIfModifiedSince = "If-Modified-Since"
+
+	// HeaderIfNoneMatch is the HTTP header that makes the request method
+	// conditional on the resource's ETag not matching any of the listed ETags.
+	HeaderIfNoneMatch = "If-None-Match"
+
+	// HeaderIfUnmodifiedSince is the HTTP header that makes the request
+	// method conditional on the resource not being modified after the
+	// specified date.
+	HeaderIfUnmodifiedSince = "If-Unmodified-Since"
+
+	// HeaderLastModified is the HTTP header that represents the date and
+	// time at which the server believes the resource was last modified.
+	HeaderLastModified = "Last-Modified"
+
+	// HeaderVary is the HTTP header that indicates the set of request-header
+	// fields that fully determines the response sent by the server.
+	HeaderVary = "Vary"
+
+	// HeaderConnection is the HTTP header that controls whether the network
+	// connection stays open after the current transaction finishes.
+	HeaderConnection = "Connection"
+
+	// HeaderKeepAlive is the HTTP header that specifies directives for
+	// managing the persistence of the connection.
+	HeaderKeepAlive = "Keep-Alive"
+
+	// HeaderAccept is the HTTP header that specifies the media types which
+	// are acceptable for the response.
+	HeaderAccept = "Accept"
+
+	// HeaderAcceptCharset is the HTTP header that specifies the character
+	// sets that are acceptable for the response.
+	HeaderAcceptCharset = "Accept-Charset"
+
+	// HeaderAcceptEncoding is the HTTP header that specifies the content
+	// encodings that are acceptable in the response.
+	HeaderAcceptEncoding = "Accept-Encoding"
+
+	// HeaderAcceptLanguage is the HTTP header that specifies the natural
+	// languages that are preferred as a response to the request.
+	HeaderAcceptLanguage = "Accept-Language"
+
+	// HeaderCookie is the HTTP header that contains stored HTTP cookies
+	// previously sent by the server with the Set-Cookie header.
+	HeaderCookie = "Cookie"
+
+	// HeaderExpect is the HTTP header that indicates that particular
+	// server behaviors are required by the client.
+	HeaderExpect = "Expect"
+
+	// HeaderMaxForwards is the HTTP header that represents the maximum
+	// number of times that the request can be forwarded through proxies
+	// or gateways.
+	HeaderMaxForwards = "Max-Forwards"
+
+	// HeaderSetCookie is the HTTP header that represents the instruction
+	// sent by the server to the client to store a cookie.
+	HeaderSetCookie = "Set-Cookie"
+
+	// HeaderAccessControlAllowCredentials is the HTTP header that indicates
+	// whether the response to the request can be exposed when the credentials
+	// flag is true.
+	HeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
+
+	// HeaderAccessControlAllowHeaders is the HTTP header that specifies
+	// the headers that can be used during the actual request.
+	HeaderAccessControlAllowHeaders = "Access-Control-Allow-Headers"
+
+	// HeaderAccessControlAllowMethods is the HTTP header that specifies
+	// the methods allowed when accessing the resource in response to
+	// a preflight request.
+	HeaderAccessControlAllowMethods = "Access-Control-Allow-Methods"
+
+	// HeaderAccessControlAllowOrigin is the HTTP header that specifies
+	// the origins that are allowed to access the resource.
+	HeaderAccessControlAllowOrigin = "Access-Control-Allow-Origin"
+
+	// HeaderAccessControlExposeHeaders is the HTTP header that lets
+	// a server whitelist headers that browsers are allowed to access.
+	HeaderAccessControlExposeHeaders = "Access-Control-Expose-Headers"
+
+	// HeaderAccessControlMaxAge is the HTTP header that indicates how
+	// long the results of a preflight request can be cached.
+	HeaderAccessControlMaxAge = "Access-Control-Max-Age"
+
+	// HeaderAccessControlRequestHeaders is the HTTP header used in preflight
+	// requests to indicate which HTTP headers can be used during the actual
+	// request.
+	HeaderAccessControlRequestHeaders = "Access-Control-Request-Headers"
+
+	// HeaderAccessControlRequestMethod is the HTTP header used in preflight
+	// requests to indicate which HTTP method can be used during the actual
+	// request.
+	HeaderAccessControlRequestMethod = "Access-Control-Request-Method"
+
+	// HeaderOrigin is the HTTP header that indicates the origin of the
+	// request or the page making the request.
+	HeaderOrigin = "Origin"
+
+	// HeaderTimingAllowOrigin is the HTTP header that specifies which
+	// origins are allowed to include timing resources in performance data.
+	HeaderTimingAllowOrigin = "Timing-Allow-Origin"
+
+	// HeaderXPermittedCrossDomainPolicies is the HTTP header that specifies
+	// the policy that on-site or cross-site policy files can be used to grant
+	// cross-domain loading of content.
+	HeaderXPermittedCrossDomainPolicies = "X-Permitted-Cross-Domain-Policies"
+
+	// HeaderDNT is the HTTP header that represents the "Do Not Track"
+	// request header, indicating the user's tracking preference.
+	HeaderDNT = "DNT"
+
+	// HeaderTk is the HTTP header that represents the tracking status sent
+	// in response to a DNT request.
+	HeaderTk = "Tk"
+
+	// HeaderContentDisposition is the HTTP header that represents directives
+	// for content disposition,
+	// such as inline or attachment.
+	HeaderContentDisposition = "Content-Disposition"
+
+	// HeaderContentEncoding is the HTTP header that represents the encoding
+	// transformations that have been applied to the content.
+	HeaderContentEncoding = "Content-Encoding"
+
+	// HeaderContentLanguage is the HTTP header that represents the natural
+	// language(s) of the intended audience for the content.
+	HeaderContentLanguage = "Content-Language"
+
+	// HeaderContentLength is the HTTP header that represents the size of the
+	// entity-body in bytes.
+	HeaderContentLength = "Content-Length"
+
+	// HeaderContentLocation is the HTTP header that represents an alternate
+	// location for the returned content.
+	HeaderContentLocation = "Content-Location"
+
+	// HeaderContentType is the HTTP header that represents the media type
+	// of the content.
+	HeaderContentType = "Content-Type"
+
+	// HeaderForwarded is the HTTP header that represents the details of
+	// the forwarding mechanism, including the originating IP.
+	HeaderForwarded = "Forwarded"
+
+	// HeaderVia is the HTTP header that represents intermediate protocols
+	// and recipients between the user agent and the server on requests,
+	// and between the origin server and the client on responses.
+	HeaderVia = "Via"
+
+	// HeaderXForwardedFor is the HTTP header that represents the originating
+	// IP addresses of a client connecting to a web server through an HTTP
+	// proxy or a load balancer.
+	HeaderXForwardedFor = "X-Forwarded-For"
+
+	// HeaderXForwardedHost is the HTTP header that represents the original
+	// host requested by the client in the Host HTTP request header.
+	HeaderXForwardedHost = "X-Forwarded-Host"
+
+	// HeaderXForwardedProto is the HTTP header that represents the protocol
+	// (HTTP or HTTPS) that a client used to connect to your proxy or load
+	// balancer.
+	HeaderXForwardedProto = "X-Forwarded-Proto"
+
+	// HeaderXForwardedProtocol is similar to X-Forwarded-Proto, and it
+	// represents the protocol used by the client.
+	HeaderXForwardedProtocol = "X-Forwarded-Protocol"
+
+	// HeaderXForwardedSSL is the HTTP header that represents the usage of
+	// SSL (HTTPS) by the client.
+	HeaderXForwardedSSL = "X-Forwarded-Ssl"
+
+	// HeaderXUrlScheme is the HTTP header that represents the scheme
+	// (HTTP/HTTPS) part of the URL requested by the client.
+	HeaderXUrlScheme = "X-Url-Scheme"
+
+	// HeaderLocation is the HTTP header that represents the URL to
+	// redirect a page to.
+	HeaderLocation = "Location"
+
+	// HeaderFrom is the HTTP header that represents the email address
+	// of the user making the request.
+	HeaderFrom = "From"
+
+	// HeaderHost is the HTTP header that represents the domain name of
+	// the server (for virtual hosting), and optionally the TCP port number
+	// on which the server is listening.
+	HeaderHost = "Host"
+
+	// HeaderReferer is the HTTP header that represents the address of
+	// the previous web page from which a link to the currently requested
+	// page was followed.
+	HeaderReferer = "Referer"
+
+	// HeaderReferrerPolicy is the HTTP header that represents the policy
+	// governing which referrer information sent in the Referer header should
+	// be included with requests made.
+	HeaderReferrerPolicy = "Referrer-Policy"
+
+	// HeaderUserAgent is the HTTP header that represents the string
+	// identifying the user agent originating the request.
+	HeaderUserAgent = "User-Agent"
+
+	// HeaderAllow is the HTTP header that represents the list of HTTP
+	// request methods supported by a resource.
+	HeaderAllow = "Allow"
+
+	// HeaderServer is the HTTP header that represents the web server
+	// software being used on the responding server.
+	HeaderServer = "Server"
+
+	// HeaderAcceptRanges is the HTTP header that represents the range
+	// of bytes that the server accepts in the Range header of a request.
+	HeaderAcceptRanges = "Accept-Ranges"
+
+	// HeaderContentRange is the HTTP header that represents the part of
+	// a document that the server is returning in a partial request response.
+	HeaderContentRange = "Content-Range"
+
+	// HeaderIfRange is the HTTP header that represents a condition for
+	// sending a partial copy of a resource only if a previous copy has
+	// not been modified.
+	HeaderIfRange = "If-Range"
+
+	// HeaderRange is the HTTP header that represents the specific part
+	// of a document requested by a client.
+	HeaderRange = "Range"
+
+	// HeaderContentSecurityPolicy is the HTTP header that represents the
+	// policy that specifies valid sources for content on a webpage.
+	HeaderContentSecurityPolicy = "Content-Security-Policy"
+
+	// HeaderContentSecurityPolicyReportOnly is the HTTP header that represents
+	// the policy that specifies valid sources for content on a webpage but is
+	// reported only.
+	HeaderContentSecurityPolicyReportOnly = "Content-Security-Policy-Report-Only"
+
+	// HeaderCrossOriginResourcePolicy is the HTTP header that represents the
+	// policy that allows a server to specify the origins that are allowed to
+	// load its resources.
+	HeaderCrossOriginResourcePolicy = "Cross-Origin-Resource-Policy"
+
+	// HeaderExpectCT is the HTTP header that represents the policy that allows
+	// sites to opt in to reporting and/or enforcement of Certificate
+	// Transparency requirements.
+	HeaderExpectCT = "Expect-CT"
+
+	// HeaderPermissionsPolicy is the HTTP header that represents the
+	// permissions policy for a web page, specifying which features are
+	// allowed to be used by the page.
+	HeaderPermissionsPolicy = "Permissions-Policy"
+
+	// HeaderPublicKeyPins is the HTTP header that represents the Public
+	// Key Pinning Extension for HTTP, associating a specific cryptographic
+	// public key with a web server to decrease the risk of MITM attacks with
+	// forged certificates.
+	HeaderPublicKeyPins = "Public-Key-Pins"
+
+	// HeaderPublicKeyPinsReportOnly is the HTTP header that represents the
+	// Public Key Pinning Extension for HTTP for report-only mode, which
+	// reports pin validation failures without enforcing them.
+	HeaderPublicKeyPinsReportOnly = "Public-Key-Pins-Report-Only"
+
+	// HeaderStrictTransportSecurity is the HTTP header that represents the
+	// policy that enforces secure (HTTPS) connections to the server.
+	HeaderStrictTransportSecurity = "Strict-Transport-Security"
+
+	// HeaderUpgradeInsecureRequests is the HTTP header that represents the
+	// request that the server upgrades the connection to HTTPS.
+	HeaderUpgradeInsecureRequests = "Upgrade-Insecure-Requests"
+
+	// HeaderXContentTypeOptions is the HTTP header that represents the
+	// directive for the browser to disable MIME type sniffing and strictly
+	// follow the declared content type.
+	HeaderXContentTypeOptions = "X-Content-Type-Options"
+
+	// HeaderXDownloadOptions is the HTTP header that represents the directive
+	// for Internet Explorer 8+ to not open downloads directly in the browser.
+	HeaderXDownloadOptions = "X-Download-Options"
+
+	// HeaderXFrameOptions is the HTTP header that represents the directive
+	// that specifies whether a browser should be allowed to render a page
+	// in a <frame>, <iframe>, <embed>, or <object>.
+	HeaderXFrameOptions = "X-Frame-Options"
+
+	// HeaderXPoweredBy is the HTTP header that represents information
+	// about the technology supporting the web server (often removed for
+	// security reasons).
+	HeaderXPoweredBy = "X-Powered-By"
+
+	// HeaderXXSSProtection is the HTTP header that represents the directive
+	// for cross-site scripting filter built into most modern web browsers.
+	HeaderXXSSProtection = "X-XSS-Protection"
+
+	// HeaderLastEventID is the HTTP header that represents the ID of the
+	// last event in an EventSource / Server-Sent Events connection, allowing
+	// resuming of event streams after a disconnection.
+	HeaderLastEventID = "Last-Event-ID"
+
+	// HeaderNEL is the HTTP header that represents the Network Error Logging
+	// policy, which allows a server to collect network error reports from
+	// user agents.
+	HeaderNEL = "NEL"
+
+	// HeaderPingFrom is the HTTP header that represents the URL of the Web
+	// page that initiated a ping request during hyperlink auditing.
+	HeaderPingFrom = "Ping-From"
+
+	// HeaderPingTo is the HTTP header that represents the URL to which a ping
+	// request during hyperlink auditing is sent.
+	HeaderPingTo = "Ping-To"
+
+	// HeaderReportTo is the HTTP header that represents the endpoint
+	// groups for the Reporting API, allowing the browser to report errors
+	// to the server.
+	HeaderReportTo = "Report-To"
+
+	// HeaderTE is the HTTP header that represents the transfer encodings
+	// the user agent is willing to accept: chunked, compress, deflate, gzip,
+	// identity.
+	HeaderTE = "TE"
+
+	// HeaderTrailer is the HTTP header that represents the header fields
+	// present in the trailer of a message encoded with chunked transfer coding.
+	HeaderTrailer = "Trailer"
+
+	// HeaderTransferEncoding is the HTTP header that represents the form of
+	// encoding used to safely transfer the payload body to the user.
+	HeaderTransferEncoding = "Transfer-Encoding"
+
+	// HeaderSecWebSocketAccept is the HTTP header that represents the
+	// server's acceptance of a WebSocket handshake request to establish
+	// a WebSocket connection.
+	HeaderSecWebSocketAccept = "Sec-WebSocket-Accept"
+
+	// HeaderSecWebSocketExtensions is the HTTP header that represents the
+	// accepted extensions for a WebSocket connection.
+	HeaderSecWebSocketExtensions = "Sec-WebSocket-Extensions"
+
+	// HeaderSecWebSocketKey is the HTTP header that represents the encoded
+	// key for the server to accept the WebSocket connection.
+	HeaderSecWebSocketKey = "Sec-WebSocket-Key"
+
+	// HeaderSecWebSocketProtocol is the HTTP header that represents the
+	// agreed-upon protocol during a WebSocket connection handshake.
+	HeaderSecWebSocketProtocol = "Sec-WebSocket-Protocol"
+
+	// HeaderSecWebSocketVersion is the HTTP header that represents
+	// the WebSocket protocol version being used by the client.
+	HeaderSecWebSocketVersion = "Sec-WebSocket-Version"
+
+	// HeaderAcceptPatch is the HTTP header that represents the patch
+	// document formats accepted by the server.
+	HeaderAcceptPatch = "Accept-Patch"
+
+	// HeaderAcceptPushPolicy is the HTTP header that represents the
+	// server's preferences for HTTP/2 server push.
+	HeaderAcceptPushPolicy = "Accept-Push-Policy"
+
+	// HeaderAcceptSignature is the HTTP header that represents the
+	// client's support for the HTTP Signatures.
+	HeaderAcceptSignature = "Accept-Signature"
+
+	// HeaderAltSvc is the HTTP header that represents an alternative
+	// service for accessing a resource.
+	HeaderAltSvc = "Alt-Svc"
+
+	// HeaderDate is the HTTP header that represents the date and time
+	// at which the message was originated.
+	HeaderDate = "Date"
+
+	// HeaderIndex is the HTTP header that represents index resources
+	// for a collection of resources.
+	HeaderIndex = "Index"
+
+	// HeaderLargeAllocation is the HTTP header that hints to the browser
+	// that a large allocation will be made.
+	HeaderLargeAllocation = "Large-Allocation"
+
+	// HeaderLink is the HTTP header that represents relationships between
+	// the current document and an external resource.
+	HeaderLink = "Link"
+
+	// HeaderPushPolicy is the HTTP header that represents the server's
+	// policy for HTTP/2 server push.
+	HeaderPushPolicy = "Push-Policy"
+
+	// HeaderRetryAfter is the HTTP header that represents the amount of
+	// time the client should wait before making a follow-up request.
+	HeaderRetryAfter = "Retry-After"
+
+	// HeaderServerTiming is the HTTP header that represents the server
+	// timing for performance tracking.
+	HeaderServerTiming = "Server-Timing"
+
+	// HeaderSignature is the HTTP header that represents the digital
+	// signature for the message content for verification.
+	HeaderSignature = "Signature"
+
+	// HeaderSignedHeaders is the HTTP header that represents the list
+	// of headers that are included in the digital signature.
+	HeaderSignedHeaders = "Signed-Headers"
+
+	// HeaderSourceMap is the HTTP header that provides a link to a source
+	// map for debugging purposes.
+	HeaderSourceMap = "SourceMap"
+
+	// HeaderUpgrade is the HTTP header that requests the client to switch
+	// to a different protocol.
+	HeaderUpgrade = "Upgrade"
+
+	// HeaderXDNSPrefetchControl is the HTTP header that controls DNS
+	// prefetching, allowing browsers to resolve domain names before
+	// resources are requested.
+	HeaderXDNSPrefetchControl = "X-DNS-Prefetch-Control"
+
+	// HeaderXPingback is the HTTP header that specifies the pingback
+	// URL for the resource.
+	HeaderXPingback = "X-Pingback"
+
+	// HeaderXRequestID is the HTTP header that provides a unique identifier
+	// for the request, facilitating tracing and debugging.
+	HeaderXRequestID = "X-Request-ID"
+
+	// HeaderXRequestedWith is the HTTP header that identifies the request
+	// as being made with a particular technology, often used to identify
+	// Ajax requests.
+	HeaderXRequestedWith = "X-Requested-With"
+
+	// HeaderXRobotsTag is the HTTP header that provides directives to search
+	// engines for indexing and serving the content.
+	HeaderXRobotsTag = "X-Robots-Tag"
+
+	// HeaderXUACompatible is the HTTP header that advises the web browser
+	// to use a specific rendering engine (e.g., IE=edge).
+	HeaderXUACompatible = "X-UA-Compatible"
+
+	// HeaderAccessControlAllowPrivateNetwork is the HTTP header that grants
+	// web applications on the public internet access to resources on the
+	// user’s private network.
+	HeaderAccessControlAllowPrivateNetwork = "Access-Control-Allow-Private-Network"
+
+	// HeaderAccessControlRequestPrivateNetwork is the HTTP header used in
+	// preflight requests to indicate access to the user’s private network
+	// is requested by the web application.
 	HeaderAccessControlRequestPrivateNetwork = "Access-Control-Request-Private-Network"
 )
 

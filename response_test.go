@@ -12,16 +12,6 @@ import (
 	"github.com/goloop/g"
 )
 
-// import (
-// 	"encoding/json"
-// 	"io"
-// 	"io/ioutil"
-// 	"net/http"
-// 	"net/http/httptest"
-// 	"strings"
-// 	"testing"
-// )
-
 // TestNewResponse tests the NewResponse function.
 func TestNewResponse(t *testing.T) {
 	w := httptest.NewRecorder()
@@ -118,7 +108,8 @@ func TestAddHeader(t *testing.T) {
 	r.AddHeader("X-Custom-Header", "Value2")
 
 	exp := "Value1,Value2"
-	if got := w.Header()["X-Custom-Header"]; strings.Join(got, ",") != exp {
+	got := w.Header().Values("X-Custom-Header")
+	if strings.Join(got, ",") != exp {
 		t.Errorf("AddHeader() = %v, want %v", got, exp)
 	}
 }
@@ -129,8 +120,9 @@ func TestAddHeader_SingleValue(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := NewResponse(w)
 
-	r.AddHeader("Content-Length", "1234", "5678")
-	if got := w.Header()["Content-Length"]; strings.Join(got, ",") != "1234" {
+	r.AddHeader(HeaderContentLength, "1234", "5678")
+	got := w.Header().Values(HeaderContentLength)
+	if strings.Join(got, ",") != "1234" {
 		t.Errorf("AddHeader() for single value header = %v, "+
 			"want %v", got, "1234")
 	}

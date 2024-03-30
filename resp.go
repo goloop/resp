@@ -5,6 +5,41 @@ import (
 	"net/http"
 )
 
+// R is a type alias for a map[string]interface{}. It is designed to simplify
+// the creation and manipulation of JSON objects in Go, making it easier to
+// work with dynamic data structures commonly used in web applications and APIs.
+// The use of `interface{}` as the map value allows storing any Go value,
+// offering the flexibility needed for JSON serialization.
+//
+// The alias `R` stands for "Response", emphasizing its utility in preparing
+// data for HTTP responses. It streamlines the generation of JSON-encoded
+// responses by providing a concise and readable way to construct JSON objects
+// without the need for struct definitions or type assertions.
+//
+// Example Usage:
+// The following example demonstrates how to use `R` to send a JSON response
+// in an HTTP handler. The `resp.JSON` function leverages the `R` type to
+// encode the map into a JSON object and write it to the HTTP response.
+// This approach is particularly useful for endpoints that return JSON data,
+// as it reduces boilerplate and improves code readability.
+//
+//	import (
+//		"net/http"
+//		"time"
+//		"github.com/goloop/resp"
+//	)
+//
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//		data := resp.R{
+//			"Name": "Go Loop",
+//			"Created": time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
+//		}
+//		if err := resp.JSON(w, data); err != nil {
+//			// handle error
+//		}
+//	}
+type R map[string]any
+
 // JSON sends a JSON response to the client.
 //
 // This function wraps the process of setting up a JSON response by
@@ -26,8 +61,8 @@ import (
 //
 // Example usage:
 //
-//	func MyHandler(w http.ResponseWriter, r *http.Request) {
-//	    myData := struct {
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    data := struct {
 //	        Name string `json:"name"`
 //	        Age  int    `json:"age"`
 //	    }{
@@ -35,16 +70,18 @@ import (
 //	        Age:  30,
 //	    }
 //
-//	    // Send a JSON response with HTTP status 200 OK and custom header
-//	    if err := resp.JSON(w, myData, WithStatus(http.StatusOK),
-//	                 WithHeader("X-Custom-Header", "value")); err != nil {
-//	        // Handle error
+//	    // // With custom settings.
+//	    // // Send a JSON response with HTTP status 200 OK and custom header.
+//	    // if err := resp.JSON(w, data, WithStatus(http.StatusOK),
+//	    //              WithHeader("X-Custom-Header", "value")); err != nil {
+//	    //     // Handle error...
+//	    // }
+//
+//	    // With default settings.
+//	    if err := resp.JSON(w, data); err != nil {
+//	        // Handle error...
 //	    }
 //	}
-//
-// This example demonstrates how to use the JSON function to send a JSON
-// response with a 200 OK status and a custom header. The myData object
-// is encoded as JSON and sent to the client.
 func JSON(w http.ResponseWriter, data any, opts ...Option) error {
 	response := NewResponse(w, opts...)
 	return response.JSON(data)
@@ -74,27 +111,17 @@ func JSON(w http.ResponseWriter, data any, opts ...Option) error {
 //
 // Example usage:
 //
-//	func MyJSONPHandler(w http.ResponseWriter, r *http.Request) {
+//	func Handler(w http.ResponseWriter, r *http.Request) {
 //	    data := map[string]string{"hello": "world"}
 //
-//	    // Extract callback function name from query parameters
+//	    // Extract callback function name from query parameters.
 //	    callback := r.URL.Query().Get("callback")
 //
-//	    // Send a JSONP response
-//	    err := resp.JSONP(w, data, callback, WithStatus(http.StatusOK))
-//	    if err != nil {
-//	        // Handle error
-//	        http.Error(w, err.Error(), http.StatusInternalServerError)
-//	        return
+//	    // Send a JSONP response.
+//	    if err := resp.JSONP(w, data, callback); err != nil {
+//	        // Handle error...
 //	    }
 //	}
-//
-// In this example, the JSONP function is used to send a JSONP response with
-// the data `{"hello": "world"}` wrapped in a callback function specified by
-// the client.
-// The callback name is retrieved from the request's query parameters, allowing
-// the client-side JavaScript to process the response data despite cross-domain
-// restrictions.
 func JSONP(
 	w http.ResponseWriter,
 	data any,
@@ -127,23 +154,14 @@ func JSONP(
 //
 // Example usage:
 //
-//	func MyTextHandler(w http.ResponseWriter, r *http.Request) {
+//	func Handler(w http.ResponseWriter, r *http.Request) {
 //	    message := "Hello, World!"
 //
-//	    // Send a plain text response with HTTP status 200 OK
-//	    err := resp.String(w, message, WithStatus(http.StatusOK))
-//	    if err != nil {
-//	        // Handle error
-//	        http.Error(w, "Failed to write response",
-//	                   http.StatusInternalServerError)
+//	    // Send a plain text response with HTTP status 200 OK.
+//	    if err := resp.String(w, message); err != nil {
+//	        // Handle error...
 //	    }
 //	}
-//
-// In this example, the String function is used to send a plain text response
-// containing "Hello, World!" to the client. The WithStatus option is used to
-// explicitly set the HTTP status code to 200 OK. This demonstrates how to use
-// the String function to return text responses, making it easy to build
-// text-based endpoints in a web application.
 func String(w http.ResponseWriter, data string, opts ...Option) error {
 	response := NewResponse(w, opts...)
 	return response.String(data)
@@ -172,66 +190,79 @@ func String(w http.ResponseWriter, data string, opts ...Option) error {
 //
 // Example usage:
 //
-//	func MyErrorHandler(w http.ResponseWriter, r *http.Request) {
-//	    // Example of handling a not found error
-//	    err := resp.Error(w, http.StatusNotFound,
-//	                     "The requested resource was not found")
-//	    if err != nil {
-//	        // Additional error handling logic if needed
-//	        log.Printf("Failed to send error response: %v", err)
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    // If message is not set, it will be generated automatically
+//	    // from the error status.
+//	    if err := resp.Error(w, http.StatusNotFound); err != nil {
+//	        // Handle error...
 //	    }
 //	}
-//
-// In this example, the Error function is used to send an error
-// response with a 404 Not Found status code and a custom error message.
-// This demonstrates how to use the Error function to communicate
-// specific error conditions back to the client in a RESTful API
-// or web application.
-func Error(w http.ResponseWriter, status int, message ...string) error {
+func Error[T string | int](
+	w http.ResponseWriter,
+	messageOrStatus T,
+	statusCodes ...int,
+) error {
+	status := StatusUndefined
+	messages := make([]string, 0, 1)
+
+	switch v := any(messageOrStatus).(type) {
+	case int:
+		status = v
+	case string:
+		messages = append(messages, v)
+	}
+
+	if status == StatusUndefined {
+		if len(statusCodes) > 0 {
+			status = statusCodes[0]
+		} else {
+			status = StatusInternalServerError
+		}
+	}
+
 	response := NewResponse(w, WithStatus(status))
-	return response.Error(message...)
+	return response.Error(messages...)
 }
 
 // Stream sends a stream response to the client.
 //
-// This function facilitates the sending of streaming data, such as file downloads or
-// video streaming, by encapsulating the process of streaming from an io.Reader to the
-// http.ResponseWriter. It can be configured with various options to set headers or
-// status codes before streaming begins. The Content-Type of the response should be set
-// appropriately using options, depending on the type of data being streamed.
+// This function facilitates the sending of streaming data, such as file
+// downloads or video streaming, by encapsulating the process of streaming
+// from an io.Reader to the http.ResponseWriter. It can be configured with
+// various options to set headers or status codes before streaming begins.
+// The Content-Type of the response should be set appropriately using options,
+// depending on the type of data being streamed.
 //
 // Parameters:
-//   - w: The http.ResponseWriter to which the streaming response will be written.
-//   - reader: An io.Reader from which data will be read and streamed to the response. This
-//     could be a file, a buffer, or any other data source implementating io.Reader.
-//   - opts...: Optional configurations applied to the response. These can be used to set
-//     custom headers, status codes, or other response settings.
+//   - w:The http.ResponseWriter to which the streaming response will
+//     be written.
+//   - reader:  An io.Reader from which data will be read and streamed to the
+//     response. This could be a file, a buffer, or any other data
+//     source implementing io.Reader.
+//   - opts...: Optional configurations applied to the response. These can
+//     be used to set custom headers, status codes, or other response
+//     settings.
 //
 // Returns:
-// - An error if there's an issue writing the stream to the response. Otherwise, nil.
+//   - An error if there's an issue writing the stream to the response.
+//     Otherwise, nil.
 //
 // Example usage:
 //
-//	func FileStreamHandler(w http.ResponseWriter, r *http.Request) {
+//	func Handler(w http.ResponseWriter, r *http.Request) {
 //	    file, err := os.Open("video.mp4")
 //	    if err != nil {
-//	        // Handle error (file not found, etc.)
-//	        http.Error(w, "File not found", http.StatusNotFound)
+//	        resp.Error(w, resp.StatusNotFound)
 //	        return
 //	    }
 //	    defer file.Close()
 //
-//	    // Stream the file to the response with the correct Content-Type
-//	    if err := resp.Stream(w, file, WithHeader("Content-Type", "video/mp4")); err != nil {
-//	        // Handle error streaming file
+//	    // Stream the file to the response with the correct Content-Type.
+//	    err := resp.Stream(w, file, WithHeader("Content-Type", "video/mp4"))
+//	    if err != nil {
 //	        log.Printf("Failed to stream file: %v", err)
 //	    }
 //	}
-//
-// This example demonstrates how to use the Stream function to serve a video file directly
-// to the client. It sets the Content-Type header to "video/mp4" to ensure the client handles
-// the response correctly. The function reads data from the file and streams it to the response,
-// enabling efficient serving of large files or real-time data.
 func Stream(
 	w http.ResponseWriter,
 	reader io.Reader,
@@ -243,48 +274,44 @@ func Stream(
 
 // ServeFile sends a file response to the client.
 //
-// This function is designed to simplify the process of serving static files (e.g., images,
-// documents, media files) to the client over HTTP. It leverages http.ServeFile to handle
-// the details of reading and transmitting the file, including setting appropriate headers
-// for caching, content type detection, and handling range requests for efficient media
-// streaming. The function can be configured with various options to set custom headers,
-// status codes, or other response settings before the file is served.
+// This function is designed to simplify the process of serving static files
+// (e.g., images, documents, media files) to the client over HTTP. It leverages
+// http.ServeFile to handle the details of reading and transmitting the file,
+// including setting appropriate headers for caching, content type detection,
+// and handling range requests for efficient media streaming. The function can
+// be configured with various options to set custom headers, status codes, or
+// other response settings before the file is served.
 //
 // Parameters:
 //   - w: The http.ResponseWriter to which the file will be written.
-//   - r: The *http.Request object that initiated the file request. This is required for
-//     handling conditional GET requests and range requests.
-//   - filename: The path to the file that will be served. This must be a valid file path
-//     accessible by the server.
-//   - opts...: Optional configurations applied to the response. These can be used to set
-//     custom headers, status codes, or other response settings.
+//   - r: The *http.Request object that initiated the file request. This is
+//     required for handling conditional GET requests and range requests.
+//   - filename: The path to the file that will be served. This must be a
+//     valid file path accessible by the server.
+//   - opts...: Optional configurations applied to the response. These can be
+//     used to set custom headers, status codes, or other response settings.
 //
 // Returns:
-// - An error if there's an issue serving the file. Otherwise, nil.
+//   - An error if there's an issue serving the file. Otherwise, nil.
 //
 // Example usage:
 //
-//	func MyFileHandler(w http.ResponseWriter, r *http.Request) {
-//	    // Assuming there's a query parameter 'file' with the filename
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    // Assuming there's a query parameter 'file' with the filename.
 //	    filename := r.URL.Query().Get("file")
 //	    if filename == "" {
-//	        http.Error(w, "File not specified", http.StatusBadRequest)
+//	        resp.Error(w, http.StatusBadRequest, "File not specified")
 //	        return
 //	    }
 //
-//	    // Serve the requested file with Content-Disposition header for download
-//	    if err := resp.ServeFile(w, r, filepath.Join("static", filename), WithHeader("Content-Disposition", "attachment; filename=\""+filename+"\"")); err != nil {
-//	        // Handle error (file not found, permissions issue, etc.)
+//	    // Serve the file with Content-Disposition header for download.
+//	    err := resp.ServeFile(w, r, filepath.Join("static", filename),
+//	        resp.AddContentDisposition("attachment", filename))
+//	    if err != nil {
 //	        log.Printf("Failed to serve file: %v", err)
-//	        http.Error(w, "Failed to serve file", http.StatusInternalServerError)
+//	        resp.Error(w, 500, "Failed to serve file")
 //	    }
 //	}
-//
-// In this example, the ServeFile function is used to send a requested file to the client,
-// with an additional header to suggest that the browser treat the response as a file to
-// download. The file is expected to be located within a "static" directory, and its name
-// is retrieved from a query parameter. This setup is useful for dynamically serving files
-// based on client requests, including handling downloads.
 func ServeFile(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -297,43 +324,41 @@ func ServeFile(
 
 // ServeFileAsDownload sends a file as a download response to the client.
 //
-// This function is intended for scenarios where you need to serve dynamically generated
-// content or files stored in memory as downloads, rather than serving files directly from
-// the filesystem. It sets the Content-Disposition header to prompt the browser to treat
-// the response as a file to be downloaded. The function can be configured with various
-// options to set custom headers, status codes, or other response settings before the
-// download is initiated.
+// This function is intended for scenarios where you need to serve
+// dynamically generated content or files stored in memory as downloads,
+// rather than serving files directly from the filesystem. It sets the
+// Content-Disposition header to prompt the browser to treat the response
+// as a file to be downloaded. The function can be configured with various
+// options to set custom headers, status codes, or other response settings
+// before the download is initiated.
 //
 // Parameters:
-//   - w: The http.ResponseWriter to which the download response will be written.
-//   - filename: The filename to be used in the Content-Disposition header, suggesting the
-//     name the browser should use to save the downloaded file.
+//   - w: The http.ResponseWriter to which the download response
+//     will be written.
+//   - filename: The filename to be used in the Content-Disposition header,
+//     suggesting the name the browser should use to save the downloaded file.
 //   - data: The byte slice containing the file data to be sent as the download.
-//   - opts...: Optional configurations applied to the response. These can be used to set
-//     custom headers, status codes, or other response settings.
+//   - opts...: Optional configurations applied to the response. These can be
+//     used to set custom headers, status codes, or other response settings.
 //
 // Returns:
-// - An error if there's an issue writing the download response. Otherwise, nil.
+//   - An error if there's an issue writing the download response.
+//     Otherwise, nil.
 //
 // Example usage:
 //
-//	func MyDownloadHandler(w http.ResponseWriter, r *http.Request) {
-//	    // Generate or retrieve the file data
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    // Generate or retrieve the file data.
 //	    fileData := []byte("Hello, world!")
 //	    filename := "greeting.txt"
 //
-//	    // Send the file data as a download
-//	    if err := ServeFileAsDownload(w, filename, fileData, WithStatus(http.StatusOK)); err != nil {
-//	        // Handle error
+//	    // Send the file data as a download.
+//	    err := ServeFileAsDownload(w, filename, fileData)
+//	    if err != nil {
 //	        log.Printf("Failed to serve file download: %v", err)
-//	        http.Error(w, "Failed to serve file download", http.StatusInternalServerError)
+//	        resp.Error(w, 500, "Failed to serve file download")
 //	    }
 //	}
-//
-// In this example, the ServeFileAsDownload function is used to send dynamically generated
-// file data as a download to the client. The filename "greeting.txt" is suggested to the
-// client for saving the file. Additional response configurations, such as setting the
-// HTTP status code, can be applied through the options parameter.
 func ServeFileAsDownload(
 	w http.ResponseWriter,
 	filename string,
@@ -355,30 +380,25 @@ func ServeFileAsDownload(
 // Parameters:
 //   - w: The http.ResponseWriter to which the redirect response is written.
 //   - url: The URL to which the client will be redirected.
-//   - opts...: Optional configurations applied to the response. This can include
-//     setting a specific status code using WithStatus if a different
+//   - opts...: Optional configurations applied to the response. This can
+//     include setting a specific status code using WithStatus if a different
 //     type of redirect is required (e.g., 301 Moved Permanently).
 //
 // Returns:
-// - An error if there's an issue writing the redirect response. Otherwise, nil.
+//   - An error if there's an issue writing the redirect response.
+//     Otherwise, nil.
 //
 // Example usage:
 //
-//	func MyRedirectHandler(w http.ResponseWriter, r *http.Request) {
-//	    // Define the URL to redirect to
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    // Define the URL to redirect to.
 //	    newURL := "https://example.com/new-page"
 //
-//	    // Redirect the request to the new URL
+//	    // Redirect the request to the new URL.
 //	    if err := Redirect(w, newURL); err != nil {
-//	        // Handle potential error
 //	        log.Printf("Failed to redirect: %v", err)
 //	    }
 //	}
-//
-// In this example, the Redirect function is used within an HTTP handler to redirect
-// the client to a new URL. By default, it uses the 302 Found status code for the
-// redirect, but this can be changed by passing an additional option, like
-// WithStatus(http.StatusMovedPermanently), to specify a different redirect status code.
 func Redirect(w http.ResponseWriter, url string, opts ...Option) error {
 	options := []Option{WithStatus(StatusFound)}
 	options = append(options, opts...)
@@ -395,28 +415,22 @@ func Redirect(w http.ResponseWriter, url string, opts ...Option) error {
 //
 // Parameters:
 //   - w: The http.ResponseWriter to which the no content response is written.
-//   - opts...: Optional configurations applied to the response. This can be used to
-//     set custom headers or other response settings as needed.
+//   - opts...: Optional configurations applied to the response. This can be
+//     used to set custom headers or other response settings as needed.
 //
 // Returns:
 // - An error if there's an issue setting up the response. Otherwise, nil.
 //
 // Example usage:
 //
-//	func MyDeleteHandler(w http.ResponseWriter, r *http.Request) {
+//	func Handler(w http.ResponseWriter, r *http.Request) {
 //	    // Perform the deletion operation...
 //
 //	    // Respond with no content status to indicate success
 //	    if err := resp.NoContent(w); err != nil {
-//	        // Handle potential error
 //	        log.Printf("Failed to send no content response: %v", err)
 //	    }
 //	}
-//
-// This example demonstrates how to use the NoContent function within an HTTP handler
-// that processes deletion requests. After successfully deleting a resource, it sends
-// a 204 No Content response to the client to indicate that the request was successfully
-// processed, but there is no additional content to return in the response body.
 func NoContent(w http.ResponseWriter, opts ...Option) error {
 	options := []Option{WithStatus(StatusNoContent)}
 	options = append(options, opts...)
@@ -425,48 +439,43 @@ func NoContent(w http.ResponseWriter, opts ...Option) error {
 
 // HTML sends an HTML response to the client.
 //
-// This function simplifies the process of sending HTML content as a response. It's
-// particularly useful for serving web pages or HTML fragments. By default, it sets
-// the Content-Type header to "text/html". This function can be configured with
-// various options to set custom headers, status codes, or other response settings,
-// making it versatile for web development needs.
+// This function simplifies the process of sending HTML content as a response.
+// It's particularly useful for serving web pages or HTML fragments. By default,
+// it sets the Content-Type header to "text/html". This function can be
+// configured with various options to set custom headers, status codes,
+// or other response settings, making it versatile for web development needs.
 //
 // Parameters:
 //   - w: The http.ResponseWriter to which the HTML content will be written.
-//   - data: The HTML content to be sent as the response body. This should be a valid
-//     HTML string.
-//   - opts...: Optional configurations applied to the response. These can be used to
-//     set custom headers, status codes, or other response settings.
+//   - data: The HTML content to be sent as the response body. This should
+//     be a valid HTML string.
+//   - opts...: Optional configurations applied to the response. These can
+//     be used to set custom headers, status codes, or other response settings.
 //
 // Returns:
-// - An error if there's an issue writing the HTML response. Otherwise, nil.
+//   - An error if there's an issue writing the HTML response. Otherwise, nil.
 //
 // Example usage:
 //
-//	func MyPageHandler(w http.ResponseWriter, r *http.Request) {
-//	    // Define the HTML content
-//	    htmlContent := `
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    template := `
 //	        <!DOCTYPE html>
 //	        <html>
-//	        <head><title>My Page</title></head>
+//	        <head><title>Example Page</title></head>
 //	        <body>
 //	            <h1>Hello, World!</h1>
-//	            <p>This is my page.</p>
+//	            <p>This is example page.</p>
 //	        </body>
 //	        </html>
 //	    `
 //
-//	    // Send the HTML content as a response
-//	    if err := HTML(w, htmlContent, WithStatus(http.StatusOK)); err != nil {
+//	    // Send the HTML content as a response.
+//	    if err := HTML(w, template, WithStatus(http.StatusOK)); err != nil {
 //	        // Handle error
 //	        log.Printf("Failed to send HTML response: %v", err)
-//	        http.Error(w, "Failed to send HTML response", http.StatusInternalServerError)
+//	        resp.Error(w, 500, "Failed to send HTML response")
 //	    }
 //	}
-//
-// In this example, the HTML function is used to send an HTML document as a response to
-// the client. The document includes a simple message wrapped in basic HTML structure.
-// The WithStatus option is used to explicitly set the HTTP status code to 200 OK.
 func HTML(w http.ResponseWriter, data string, opts ...Option) error {
 	return NewResponse(w, opts...).HTML(data)
 }

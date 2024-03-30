@@ -1304,7 +1304,6 @@ func TestAddWWWAuthenticate(t *testing.T) {
 		AddWWWAuthenticate("challenge0", "challenge1"),
 		WithStatusUnauthorized())
 
-	// Важливо: переконайтесь, що WriteHeader викликається після додавання всіх заголовків
 	resp.httpWriter.WriteHeader(resp.statusCode)
 
 	got := w.Header().Values(HeaderWWWAuthenticate)
@@ -1553,7 +1552,8 @@ func TestAddReferrerPolicy(t *testing.T) {
 	}
 }
 
-// TestAddUpgradeInsecureRequests_AsString tests the AddUpgradeInsecureRequests function.
+// TestAddUpgradeInsecureRequests_AsString tests the
+// AddUpgradeInsecureRequests function.
 func TestAddUpgradeInsecureRequests_AsString(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w, AddUpgradeInsecureRequests("1"))
@@ -1568,7 +1568,8 @@ func TestAddUpgradeInsecureRequests_AsString(t *testing.T) {
 	}
 }
 
-// TestAddUpgradeInsecureRequests_AsInt tests the AddUpgradeInsecureRequests function.
+// TestAddUpgradeInsecureRequests_AsInt tests the
+// AddUpgradeInsecureRequests function.
 func TestAddUpgradeInsecureRequests_AsInt(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w, AddUpgradeInsecureRequests(1))
@@ -1583,7 +1584,8 @@ func TestAddUpgradeInsecureRequests_AsInt(t *testing.T) {
 	}
 }
 
-// TestAddUpgradeInsecureRequests_AsBool tests the AddUpgradeInsecureRequests function.
+// TestAddUpgradeInsecureRequests_AsBool tests the
+// AddUpgradeInsecureRequests function.
 func TestAddUpgradeInsecureRequests_AsBool(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w, AddUpgradeInsecureRequests(true))
@@ -2005,8 +2007,8 @@ func TestAddLinkWithTitle(t *testing.T) {
 	}
 }
 
-// TestAddAccessControlAllowCredentials tests the AddAccessControlAllowCredentials
-// function.
+// TestAddAccessControlAllowCredentials tests the
+// AddAccessControlAllowCredentials function.
 func TestAddAccessControlAllowCredentials(t *testing.T) {
 	w := httptest.NewRecorder()
 	resp := NewResponse(w, AddAccessControlAllowCredentials(true))

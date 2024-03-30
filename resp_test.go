@@ -96,7 +96,7 @@ func TestFuncError(t *testing.T) {
 	status := 400
 	message := "error message"
 
-	err := Error(w, status, message)
+	err := Error(w, message, status)
 
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
@@ -110,6 +110,56 @@ func TestFuncError(t *testing.T) {
 
 	// Check the response body.
 	expected := `{"code":400,"message":"error message"}`
+	res := g.Trim(w.Body.String())
+	if res != expected {
+		t.Errorf("Error() body = %v, want %v", res, expected)
+	}
+}
+
+// TestFuncError_StatusOnly tests the Error function.
+func TestFuncError_StatusOnly(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	// Get first status only...
+	err := Error(w, StatusNotFound, StatusBadRequest)
+
+	if err != nil {
+		t.Errorf("Error() returned an error: %v", err)
+	}
+
+	// Check that the Content-Type header is set correctly.
+	got := w.Header().Get("Content-Type")
+	if want := MIMEApplicationJSONCharsetUTF8; got != want {
+		t.Errorf("Error() Content-Type = %v, want %v", got, want)
+	}
+
+	// Check the response body.
+	expected := `{"code":404,"message":"Not Found"}`
+	res := g.Trim(w.Body.String())
+	if res != expected {
+		t.Errorf("Error() body = %v, want %v", res, expected)
+	}
+}
+
+// TestFuncError_DoubleStatus tests the Error function.
+func TestFuncError_DoubleStatus(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	// Take first status only...
+	err := Error(w, StatusBadRequest, StatusNotFound)
+
+	if err != nil {
+		t.Errorf("Error() returned an error: %v", err)
+	}
+
+	// Check that the Content-Type header is set correctly.
+	got := w.Header().Get("Content-Type")
+	if want := MIMEApplicationJSONCharsetUTF8; got != want {
+		t.Errorf("Error() Content-Type = %v, want %v", got, want)
+	}
+
+	// Check the response body.
+	expected := `{"code":400,"message":"Bad Request"}`
 	res := g.Trim(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
