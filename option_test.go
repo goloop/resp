@@ -16,7 +16,7 @@ func TestWithHeader(t *testing.T) {
 
 	// Call the WithHeader function.
 	option := WithHeader("Content-Type", "application/json")
-	r = option(r)
+	option(r)
 
 	// Check that the header is set correctly.
 	if got := w.Header().Get("Content-Type"); got != "application/json" {
@@ -32,7 +32,7 @@ func TestWithHeader_MultipleValues(t *testing.T) {
 
 	// Call the WithHeader function with multiple values.
 	option := WithHeader("Accept-Encoding", "gzip", "deflate")
-	r = option(r)
+	option(r)
 
 	// Check that the header is set correctly.
 	values := w.Header().Values(HeaderAcceptEncoding)
@@ -49,7 +49,7 @@ func TestWithHeader_EmptyValues(t *testing.T) {
 
 	// Call the WithHeader function with empty values.
 	option := WithHeader("X-Custom-Header")
-	r = option(r)
+	option(r)
 
 	// Check that the header is set correctly.
 	if got := w.Header().Get("X-Custom-Header"); got != "" {
@@ -64,7 +64,7 @@ func TestWithStatus(t *testing.T) {
 
 	// Call the WithStatus function.
 	option := WithStatus(200)
-	r = option(r)
+	option(r)
 
 	// Check that the status code is set correctly.
 	if got := w.Code; got != 200 {

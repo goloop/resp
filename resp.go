@@ -300,7 +300,7 @@ func Stream(
 //	    // Assuming there's a query parameter 'file' with the filename.
 //	    filename := r.URL.Query().Get("file")
 //	    if filename == "" {
-//	        resp.Error(w, http.StatusBadRequest, "File not specified")
+//	        resp.Error(w, "File not specified", http.StatusBadRequest)
 //	        return
 //	    }
 //
@@ -309,7 +309,7 @@ func Stream(
 //	        resp.AddContentDisposition("attachment", filename))
 //	    if err != nil {
 //	        log.Printf("Failed to serve file: %v", err)
-//	        resp.Error(w, 500, "Failed to serve file")
+//	        resp.Error(w, "Failed to serve file", 500)
 //	    }
 //	}
 func ServeFile(
@@ -356,7 +356,7 @@ func ServeFile(
 //	    err := ServeFileAsDownload(w, filename, fileData)
 //	    if err != nil {
 //	        log.Printf("Failed to serve file download: %v", err)
-//	        resp.Error(w, 500, "Failed to serve file download")
+//	        resp.Error(w, "Failed to serve file download", 500)
 //	    }
 //	}
 func ServeFileAsDownload(
@@ -473,7 +473,7 @@ func NoContent(w http.ResponseWriter, opts ...Option) error {
 //	    if err := HTML(w, template, WithStatus(http.StatusOK)); err != nil {
 //	        // Handle error
 //	        log.Printf("Failed to send HTML response: %v", err)
-//	        resp.Error(w, 500, "Failed to send HTML response")
+//	        resp.Error(w, "Failed to send HTML response", 500)
 //	    }
 //	}
 func HTML(w http.ResponseWriter, data string, opts ...Option) error {

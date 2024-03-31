@@ -273,8 +273,7 @@ const (
 	HeaderTk = "Tk"
 
 	// HeaderContentDisposition is the HTTP header that represents directives
-	// for content disposition,
-	// such as inline or attachment.
+	// for content disposition, such as inline or attachment.
 	HeaderContentDisposition = "Content-Disposition"
 
 	// HeaderContentEncoding is the HTTP header that represents the encoding

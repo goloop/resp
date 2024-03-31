@@ -141,6 +141,31 @@ func TestFuncError_StatusOnly(t *testing.T) {
 	}
 }
 
+// TestFuncError_Empty tests the Error function.
+func TestFuncError_Empty(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	// Get first status only...
+	err := Error(w, "Internal Server Error")
+
+	if err != nil {
+		t.Errorf("Error() returned an error: %v", err)
+	}
+
+	// Check that the Content-Type header is set correctly.
+	got := w.Header().Get("Content-Type")
+	if want := MIMEApplicationJSONCharsetUTF8; got != want {
+		t.Errorf("Error() Content-Type = %v, want %v", got, want)
+	}
+
+	// Check the response body.
+	expected := `{"code":500,"message":"Internal Server Error"}`
+	res := g.Trim(w.Body.String())
+	if res != expected {
+		t.Errorf("Error() body = %v, want %v", res, expected)
+	}
+}
+
 // TestFuncError_DoubleStatus tests the Error function.
 func TestFuncError_DoubleStatus(t *testing.T) {
 	w := httptest.NewRecorder()

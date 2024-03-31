@@ -366,10 +366,32 @@ func TestString(t *testing.T) {
 // TestError tests the Error method.
 func TestError(t *testing.T) {
 	w := httptest.NewRecorder()
-	r := NewResponse(w)
+	r := NewResponse(w, WithStatus(StatusBadRequest))
 
 	errMessage := "This is an error"
 	r.Error(errMessage)
+
+	// Check that the status code is set to StatusInternalServerError
+	// and the Content-Type header is set to MIMEApplicationJSONCharsetUTF8
+	// and the response body contains the error message.
+	if w.Code != StatusBadRequest {
+		t.Errorf("Error() status code = %v, want %v",
+			w.Code, StatusBadRequest)
+	}
+
+	// Check that the Content-Type header is set correctly.
+	if !strings.Contains(w.Body.String(), errMessage) {
+		t.Errorf("Error() body does not contain error message %v, got %v",
+			errMessage, w.Body.String())
+	}
+}
+
+// TestError_Empty tests the Error method.
+func TestError_Empty(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := NewResponse(w)
+
+	r.Error()
 
 	// Check that the status code is set to StatusInternalServerError
 	// and the Content-Type header is set to MIMEApplicationJSONCharsetUTF8
@@ -380,9 +402,10 @@ func TestError(t *testing.T) {
 	}
 
 	// Check that the Content-Type header is set correctly.
-	if !strings.Contains(w.Body.String(), errMessage) {
-		t.Errorf("Error() body does not contain error message %v, got %v",
-			errMessage, w.Body.String())
+	want := `{"code":500,"message":"Internal Server Error"}`
+	got := g.Trim(w.Body.String())
+	if want != got {
+		t.Errorf("Error() body = %v, want %v", got, want)
 	}
 }
 
