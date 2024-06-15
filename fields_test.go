@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-type User struct {
+type person struct {
 	ID       int
 	Email    string
 	Password string
@@ -14,7 +14,7 @@ type User struct {
 
 // TestOnlyFields tests the OnlyFields function.
 func TestOnlyFields(t *testing.T) {
-	user := User{
+	user := person{
 		ID:       1,
 		Email:    "user@example.com",
 		Password: "secret",
@@ -36,7 +36,7 @@ func TestOnlyFields(t *testing.T) {
 
 // TestExcludeFields tests the ExcludeFields function.
 func TestExcludeFields(t *testing.T) {
-	user := User{
+	user := person{
 		ID:       1,
 		Email:    "user@example.com",
 		Password: "secret",
