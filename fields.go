@@ -8,9 +8,9 @@ import (
 // data and returns them as an `R` map. This function is useful
 // for creating JSON responses with a subset of the original data.
 // The operation can be performed on a single object, a slice of
-// objects, or an array of objects. When a slice or an array is
-// provided, the function returns a slice of `R` maps. If the data
-// is not a struct or a slice/array of structs, it returns the
+// objects, an array of objects, or a map. When a slice or an array
+// is provided, the function returns a slice of `R` maps. If the data
+// is not a struct, slice/array of structs, or map, it returns the
 // original data unchanged.
 //
 // Parameters:
@@ -20,7 +20,7 @@ import (
 // Returns:
 //   - An `R` map containing only the specified fields from the input
 //     data, a slice of `R` maps if the input data is a slice or an array,
-//     or the original input data unchanged if it is not a struct or a
+//     or the original input data unchanged if it is not a struct, a map, or a
 //     slice/array of structs.
 //
 // Example Usage:
@@ -102,6 +102,10 @@ func OnlyFields(data any, fields ...string) any {
 		}
 	case reflect.Struct:
 		return onlyFields(data, fields...)
+	case reflect.Map:
+		if rv.Type().Key().Kind() == reflect.String {
+			return onlyFieldsMap(data.(map[string]any), fields...)
+		}
 	}
 
 	return data
@@ -111,9 +115,9 @@ func OnlyFields(data any, fields ...string) any {
 // and returns the remaining fields as an `R` map. This function is
 // useful for creating JSON responses without sensitive or unwanted
 // fields from the original data. The operation can be performed on
-// a single object, a slice of objects, or an array of objects. When
-// a slice or an array is provided, the function returns a slice of
-// `R` maps. If the data is not a struct or a slice/array of structs,
+// a single object, a slice of objects, an array of objects, or a map.
+// When a slice or an array is provided, the function returns a slice of
+// `R` maps. If the data is not a struct, slice/array of structs, or map,
 // it returns the original data unchanged.
 //
 // Parameters:
@@ -124,7 +128,7 @@ func OnlyFields(data any, fields ...string) any {
 //   - An `R` map containing the fields from the input data except
 //     the specified fields, a slice of `R` maps if the input data
 //     is a slice or an array, or the original input data unchanged
-//     if it is not a struct or a slice/array of structs.
+//     if it is not a struct, a map, or a slice/array of structs.
 //
 // Example Usage:
 // The following example demonstrates how to use `ExcludeFields` to create
@@ -205,6 +209,10 @@ func ExcludeFields(data any, fields ...string) any {
 		}
 	case reflect.Struct:
 		return excludeFields(data, fields...)
+	case reflect.Map:
+		if rv.Type().Key().Kind() == reflect.String {
+			return excludeFieldsMap(data.(map[string]any), fields...)
+		}
 	}
 
 	return data
@@ -233,6 +241,24 @@ func onlyFields(data any, fields ...string) R {
 	return result
 }
 
+// onlyFieldsMap extracts only the specified fields from the provided
+// map and returns them as an `R` map.
+func onlyFieldsMap(data map[string]any, fields ...string) R {
+	result := make(R)
+	allowed := make(map[string]bool, len(fields))
+	for _, field := range fields {
+		allowed[field] = true
+	}
+
+	for key, value := range data {
+		if allowed[key] {
+			result[key] = value
+		}
+	}
+
+	return result
+}
+
 // excludeFields removes the specified fields from the provided data
 // and returns the remaining fields as an `R` map.
 func excludeFields(data any, fields ...string) R {
@@ -250,6 +276,24 @@ func excludeFields(data any, fields ...string) R {
 		name := rt.Field(i).Name
 		if !excluded[name] {
 			result[name] = rv.Field(i).Interface()
+		}
+	}
+
+	return result
+}
+
+// excludeFieldsMap removes the specified fields from the provided
+// map and returns the remaining fields as an `R` map.
+func excludeFieldsMap(data map[string]any, fields ...string) R {
+	result := make(R)
+	excluded := make(map[string]bool, len(fields))
+	for _, field := range fields {
+		excluded[field] = true
+	}
+
+	for key, value := range data {
+		if !excluded[key] {
+			result[key] = value
 		}
 	}
 

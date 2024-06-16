@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-type person struct {
+type User struct {
 	ID       int
 	Email    string
 	Password string
@@ -14,7 +14,7 @@ type person struct {
 
 // TestOnlyFieldsSlice tests the OnlyFields function with a slice.
 func TestOnlyFieldsSlice(t *testing.T) {
-	users := []person{
+	users := []User{
 		{
 			ID:       1,
 			Email:    "user_a@example.com",
@@ -51,7 +51,7 @@ func TestOnlyFieldsSlice(t *testing.T) {
 
 // TestExcludeFieldsSlice tests the ExcludeFields function with a slice.
 func TestExcludeFieldsSlice(t *testing.T) {
-	users := []person{
+	users := []User{
 		{
 			ID:       1,
 			Email:    "user_a@example.com",
@@ -88,7 +88,7 @@ func TestExcludeFieldsSlice(t *testing.T) {
 
 // TestOnlyFields tests the OnlyFields function.
 func TestOnlyFields(t *testing.T) {
-	user := person{
+	user := User{
 		ID:       1,
 		Email:    "user@example.com",
 		Password: "secret",
@@ -110,7 +110,7 @@ func TestOnlyFields(t *testing.T) {
 
 // TestOnlyFieldsPointer tests the OnlyFields function with a pointer to a struct.
 func TestOnlyFieldsPointer(t *testing.T) {
-	user := &person{
+	user := &User{
 		ID:       1,
 		Email:    "user@example.com",
 		Password: "secret",
@@ -132,7 +132,7 @@ func TestOnlyFieldsPointer(t *testing.T) {
 
 // TestOnlyFieldsSlicePointer tests the OnlyFields function with a slice of pointers to structs.
 func TestOnlyFieldsSlicePointer(t *testing.T) {
-	users := []*person{
+	users := []*User{
 		{
 			ID:       1,
 			Email:    "user_a@example.com",
@@ -193,7 +193,7 @@ func TestOnlyFieldsNonStruct(t *testing.T) {
 
 // TestExcludeFields tests the ExcludeFields function.
 func TestExcludeFields(t *testing.T) {
-	user := person{
+	user := User{
 		ID:       1,
 		Email:    "user@example.com",
 		Password: "secret",
@@ -215,7 +215,7 @@ func TestExcludeFields(t *testing.T) {
 
 // TestExcludeFieldsPointer tests the ExcludeFields function with a pointer to a struct.
 func TestExcludeFieldsPointer(t *testing.T) {
-	user := &person{
+	user := &User{
 		ID:       1,
 		Email:    "user@example.com",
 		Password: "secret",
@@ -237,7 +237,7 @@ func TestExcludeFieldsPointer(t *testing.T) {
 
 // TestExcludeFieldsSlicePointer tests the ExcludeFields function with a slice of pointers to structs.
 func TestExcludeFieldsSlicePointer(t *testing.T) {
-	users := []*person{
+	users := []*User{
 		{
 			ID:       1,
 			Email:    "user_a@example.com",
@@ -293,5 +293,49 @@ func TestExcludeFieldsNonStruct(t *testing.T) {
 	result = ExcludeFields(inputSlice, "field_a", "field_b")
 	if !reflect.DeepEqual(result, inputSlice) {
 		t.Errorf("ExcludeFields() with slice of strings = %v, want %v", result, inputSlice)
+	}
+}
+
+// TestOnlyFieldsMap tests the OnlyFields function with a map.
+func TestOnlyFieldsMap(t *testing.T) {
+	inputMap := map[string]any{
+		"ID":       1,
+		"Email":    "user@example.com",
+		"Password": "secret",
+		"IsActive": true,
+	}
+
+	expected := R{
+		"ID":       1,
+		"Email":    "user@example.com",
+		"IsActive": true,
+	}
+
+	result := OnlyFields(inputMap, "ID", "Email", "IsActive")
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("OnlyFields() = %v, want %v", result, expected)
+	}
+}
+
+// TestExcludeFieldsMap tests the ExcludeFields function with a map.
+func TestExcludeFieldsMap(t *testing.T) {
+	inputMap := map[string]any{
+		"ID":       1,
+		"Email":    "user@example.com",
+		"Password": "secret",
+		"IsActive": true,
+	}
+
+	expected := R{
+		"ID":       1,
+		"Email":    "user@example.com",
+		"IsActive": true,
+	}
+
+	result := ExcludeFields(inputMap, "Password")
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("ExcludeFields() = %v, want %v", result, expected)
 	}
 }
