@@ -10,18 +10,20 @@ import (
 // The operation can be performed on a single object, a slice of
 // objects, an array of objects, or a map. When a slice or an array
 // is provided, the function returns a slice of `R` maps. If the data
-// is not a struct, slice/array of structs, or map, it returns the
-// original data unchanged.
+// is not a struct, slice/array of structs, or map with string keys,
+// it returns the original data unchanged.
 //
 // Parameters:
-//   - data: The input data from which fields will be extracted.
+//   - data: The input data from which fields will be extracted. It
+//     can be a struct, a slice/array of structs, or a map with
+//     string keys (`map[string]any`).
 //   - fields: A list of field names to include in the resulting map.
 //
 // Returns:
 //   - An `R` map containing only the specified fields from the input
 //     data, a slice of `R` maps if the input data is a slice or an array,
-//     or the original input data unchanged if it is not a struct, a map, or a
-//     slice/array of structs.
+//     or the original input data unchanged if it is not a struct, a map
+//     with string keys, or a slice/array of structs.
 //
 // Example Usage:
 // The following example demonstrates how to use `OnlyFields` to create
@@ -39,10 +41,10 @@ import (
 //		IsActive bool
 //	}
 //
-//	func HandlerSingle(w http.ResponseWriter, r *http.Request) {
+//	func UserData(w http.ResponseWriter, r *http.Request) {
 //		user := User{
 //			ID:       1,
-//			Email:    "user@example.com",
+//			Email:    "user_a@example.com",
 //			Password: "secret",
 //			IsActive: true,
 //		}
@@ -52,7 +54,7 @@ import (
 //		}
 //	}
 //
-//	func HandlerMultiple(w http.ResponseWriter, r *http.Request) {
+//	func UserList(w http.ResponseWriter, r *http.Request) {
 //		users := []User{
 //		    {
 //			    ID:       1,
@@ -117,18 +119,21 @@ func OnlyFields(data any, fields ...string) any {
 // fields from the original data. The operation can be performed on
 // a single object, a slice of objects, an array of objects, or a map.
 // When a slice or an array is provided, the function returns a slice of
-// `R` maps. If the data is not a struct, slice/array of structs, or map,
-// it returns the original data unchanged.
+// `R` maps. If the data is not a struct, slice/array of structs, or map
+// with string keys, it returns the original data unchanged.
 //
 // Parameters:
-//   - data: The input data from which fields will be excluded.
+//   - data: The input data from which fields will be excluded. It
+//     can be a struct, a slice/array of structs, or a map with
+//     string keys (`map[string]any`).
 //   - fields: A list of field names to exclude from the resulting map.
 //
 // Returns:
 //   - An `R` map containing the fields from the input data except
 //     the specified fields, a slice of `R` maps if the input data
 //     is a slice or an array, or the original input data unchanged
-//     if it is not a struct, a map, or a slice/array of structs.
+//     if it is not a struct, a map with string keys, or a slice/array
+//     of structs.
 //
 // Example Usage:
 // The following example demonstrates how to use `ExcludeFields` to create
@@ -146,10 +151,10 @@ func OnlyFields(data any, fields ...string) any {
 //		IsActive bool
 //	}
 //
-//	func HandlerSingle(w http.ResponseWriter, r *http.Request) {
+//	func UserData(w http.ResponseWriter, r *http.Request) {
 //		user := User{
 //			ID:       1,
-//			Email:    "user@example.com",
+//			Email:    "user_a@example.com",
 //			Password: "secret",
 //			IsActive: true,
 //		}
@@ -159,7 +164,7 @@ func OnlyFields(data any, fields ...string) any {
 //		}
 //	}
 //
-//	func HandlerMultiple(w http.ResponseWriter, r *http.Request) {
+//	func UserList(w http.ResponseWriter, r *http.Request) {
 //	 	users := []User{
 //		    {
 //	 		    ID:       1,

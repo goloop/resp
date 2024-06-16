@@ -12,80 +12,6 @@ type User struct {
 	IsActive bool
 }
 
-// TestOnlyFieldsSlice tests the OnlyFields function with a slice.
-func TestOnlyFieldsSlice(t *testing.T) {
-	users := []User{
-		{
-			ID:       1,
-			Email:    "user_a@example.com",
-			Password: "secret",
-			IsActive: true,
-		},
-		{
-			ID:       2,
-			Email:    "user_b@example.com",
-			Password: "secret",
-			IsActive: true,
-		},
-	}
-
-	expected := []R{
-		{
-			"ID":       1,
-			"Email":    "user_a@example.com",
-			"IsActive": true,
-		},
-		{
-			"ID":       2,
-			"Email":    "user_b@example.com",
-			"IsActive": true,
-		},
-	}
-
-	result := OnlyFields(users, "ID", "Email", "IsActive")
-
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("OnlyFields() = %v, want %v", result, expected)
-	}
-}
-
-// TestExcludeFieldsSlice tests the ExcludeFields function with a slice.
-func TestExcludeFieldsSlice(t *testing.T) {
-	users := []User{
-		{
-			ID:       1,
-			Email:    "user_a@example.com",
-			Password: "secret",
-			IsActive: true,
-		},
-		{
-			ID:       2,
-			Email:    "user_b@example.com",
-			Password: "secret",
-			IsActive: true,
-		},
-	}
-
-	expected := []R{
-		{
-			"ID":       1,
-			"Email":    "user_a@example.com",
-			"IsActive": true,
-		},
-		{
-			"ID":       2,
-			"Email":    "user_b@example.com",
-			"IsActive": true,
-		},
-	}
-
-	result := ExcludeFields(users, "Password")
-
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("ExcludeFields() = %v, want %v", result, expected)
-	}
-}
-
 // TestOnlyFields tests the OnlyFields function.
 func TestOnlyFields(t *testing.T) {
 	user := User{
@@ -124,6 +50,43 @@ func TestOnlyFieldsPointer(t *testing.T) {
 	}
 
 	result := OnlyFields(user, "ID", "Email", "IsActive")
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("OnlyFields() = %v, want %v", result, expected)
+	}
+}
+
+// TestOnlyFieldsSlice tests the OnlyFields function with a slice.
+func TestOnlyFieldsSlice(t *testing.T) {
+	users := []User{
+		{
+			ID:       1,
+			Email:    "user_a@example.com",
+			Password: "secret",
+			IsActive: true,
+		},
+		{
+			ID:       2,
+			Email:    "user_b@example.com",
+			Password: "secret",
+			IsActive: true,
+		},
+	}
+
+	expected := []R{
+		{
+			"ID":       1,
+			"Email":    "user_a@example.com",
+			"IsActive": true,
+		},
+		{
+			"ID":       2,
+			"Email":    "user_b@example.com",
+			"IsActive": true,
+		},
+	}
+
+	result := OnlyFields(users, "ID", "Email", "IsActive")
 
 	if !reflect.DeepEqual(result, expected) {
 		t.Errorf("OnlyFields() = %v, want %v", result, expected)
@@ -191,6 +154,28 @@ func TestOnlyFieldsNonStruct(t *testing.T) {
 	}
 }
 
+// TestOnlyFieldsMap tests the OnlyFields function with a map.
+func TestOnlyFieldsMap(t *testing.T) {
+	inputMap := map[string]any{
+		"ID":       1,
+		"Email":    "user@example.com",
+		"Password": "secret",
+		"IsActive": true,
+	}
+
+	expected := R{
+		"ID":       1,
+		"Email":    "user@example.com",
+		"IsActive": true,
+	}
+
+	result := OnlyFields(inputMap, "ID", "Email", "IsActive")
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("OnlyFields() = %v, want %v", result, expected)
+	}
+}
+
 // TestExcludeFields tests the ExcludeFields function.
 func TestExcludeFields(t *testing.T) {
 	user := User{
@@ -229,6 +214,43 @@ func TestExcludeFieldsPointer(t *testing.T) {
 	}
 
 	result := ExcludeFields(user, "Password")
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("ExcludeFields() = %v, want %v", result, expected)
+	}
+}
+
+// TestExcludeFieldsSlice tests the ExcludeFields function with a slice.
+func TestExcludeFieldsSlice(t *testing.T) {
+	users := []User{
+		{
+			ID:       1,
+			Email:    "user_a@example.com",
+			Password: "secret",
+			IsActive: true,
+		},
+		{
+			ID:       2,
+			Email:    "user_b@example.com",
+			Password: "secret",
+			IsActive: true,
+		},
+	}
+
+	expected := []R{
+		{
+			"ID":       1,
+			"Email":    "user_a@example.com",
+			"IsActive": true,
+		},
+		{
+			"ID":       2,
+			"Email":    "user_b@example.com",
+			"IsActive": true,
+		},
+	}
+
+	result := ExcludeFields(users, "Password")
 
 	if !reflect.DeepEqual(result, expected) {
 		t.Errorf("ExcludeFields() = %v, want %v", result, expected)
@@ -293,28 +315,6 @@ func TestExcludeFieldsNonStruct(t *testing.T) {
 	result = ExcludeFields(inputSlice, "field_a", "field_b")
 	if !reflect.DeepEqual(result, inputSlice) {
 		t.Errorf("ExcludeFields() with slice of strings = %v, want %v", result, inputSlice)
-	}
-}
-
-// TestOnlyFieldsMap tests the OnlyFields function with a map.
-func TestOnlyFieldsMap(t *testing.T) {
-	inputMap := map[string]any{
-		"ID":       1,
-		"Email":    "user@example.com",
-		"Password": "secret",
-		"IsActive": true,
-	}
-
-	expected := R{
-		"ID":       1,
-		"Email":    "user@example.com",
-		"IsActive": true,
-	}
-
-	result := OnlyFields(inputMap, "ID", "Email", "IsActive")
-
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("OnlyFields() = %v, want %v", result, expected)
 	}
 }
 
