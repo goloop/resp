@@ -7,12 +7,12 @@ func TestNewErrorMessage(t *testing.T) {
 	tests := []struct {
 		status   int
 		message  string
-		expected *errorMessage
+		expected *ErrorMessage
 	}{
 		{
 			status:  200,
 			message: "OK",
-			expected: &errorMessage{
+			expected: &ErrorMessage{
 				Code:    200,
 				Message: "OK",
 			},
@@ -20,7 +20,7 @@ func TestNewErrorMessage(t *testing.T) {
 		{
 			status:  400,
 			message: "Bad Request",
-			expected: &errorMessage{
+			expected: &ErrorMessage{
 				Code:    400,
 				Message: "Bad Request",
 			},
@@ -28,7 +28,7 @@ func TestNewErrorMessage(t *testing.T) {
 		{
 			status:  500,
 			message: "Internal Server Error",
-			expected: &errorMessage{
+			expected: &ErrorMessage{
 				Code:    500,
 				Message: "Internal Server Error",
 			},
