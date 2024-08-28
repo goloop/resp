@@ -179,49 +179,34 @@ func String(w http.ResponseWriter, data string, opts ...Option) error {
 //
 // Parameters:
 //   - w: The http.ResponseWriter to which the error response will be written.
-//   - status: The HTTP status code associated with the error. This should be
-//     a valid HTTP status code that indicates an error (4xx or 5xx).
-//   - message...: Optional. One or more strings that will be concatenated and
-//     sent as the error message in the response body. If no message is
-//     provided, a default message based on the status code will be used.
+//   - code: Custom error code.
+//   - message: The error message to be sent in the response body. This can
+//     provide additional context about the error. If no message is provided,
+//     a default message based on the status code will be used.
+//   - opts...: Optional configurations applied to the response. These can be
+//     used to set custom headers, status codes, or other response settings.
 //
 // Returns:
 // - An error if writing the response fails. Otherwise, nil.
 //
 // Example usage:
 //
-//	func Handler(w http.ResponseWriter, r *http.Request) {
-//	    // If message is not set, it will be generated automatically
-//	    // from the error status.
-//	    if err := resp.Error(w, http.StatusNotFound); err != nil {
-//	        // Handle error...
-//	    }
-//	}
-func Error[T string | int](
+//	 func Handler(w http.ResponseWriter, r *http.Request) {
+//	     // If message is not set, it will be generated automatically
+//	     // from the error status.
+//		 err := resp.Error(w, 7, "Page Not Found", resp.WithStatusNotFound())
+//	     if err != nil {
+//	         // Handle error...
+//	     }
+//	 }
+func Error(
 	w http.ResponseWriter,
-	messageOrStatus T,
-	statusCodes ...int,
+	code int,
+	message string,
+	opts ...Option,
 ) error {
-	status := StatusUndefined
-	messages := make([]string, 0, 1)
-
-	switch v := any(messageOrStatus).(type) {
-	case int:
-		status = v
-	case string:
-		messages = append(messages, v)
-	}
-
-	if status == StatusUndefined {
-		if len(statusCodes) > 0 {
-			status = statusCodes[0]
-		} else {
-			status = StatusInternalServerError
-		}
-	}
-
-	response := NewResponse(w, WithStatus(status))
-	return response.Error(messages...)
+	response := NewResponse(w, opts...)
+	return response.Error(code, message)
 }
 
 // Stream sends a stream response to the client.

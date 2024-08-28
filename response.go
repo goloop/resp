@@ -214,12 +214,12 @@ func (r *Response) String(data string) error {
 // only the first one will be used.
 //
 // If the status code isn't set - StatusInternalServerError will be set.
-func (r *Response) Error(message ...string) error {
+func (r *Response) Error(code int, message string) error {
 	if r.statusCode == StatusUndefined {
 		r.statusCode = StatusInternalServerError
 	}
 
-	return r.JSON(newErrorMessage(r.statusCode, message...))
+	return r.JSON(newErrorResponse(code, message))
 }
 
 // Stream sends a stream response.

@@ -96,7 +96,7 @@ func TestFuncError(t *testing.T) {
 	status := 400
 	message := "error message"
 
-	err := Error(w, message, status)
+	err := Error(w, 7, message, WithStatus(status))
 
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
@@ -109,7 +109,7 @@ func TestFuncError(t *testing.T) {
 	}
 
 	// Check the response body.
-	expected := `{"code":400,"message":"error message"}`
+	expected := `{"code":7,"message":"error message"}`
 	res := g.Trim(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
@@ -121,7 +121,7 @@ func TestFuncError_StatusOnly(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Get first status only...
-	err := Error(w, StatusNotFound, StatusBadRequest)
+	err := Error(w, 7, "Not Found", WithStatusBadRequest())
 
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
@@ -134,7 +134,7 @@ func TestFuncError_StatusOnly(t *testing.T) {
 	}
 
 	// Check the response body.
-	expected := `{"code":404,"message":"Not Found"}`
+	expected := `{"code":7,"message":"Not Found"}`
 	res := g.Trim(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
@@ -146,7 +146,7 @@ func TestFuncError_Empty(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Get first status only...
-	err := Error(w, "Internal Server Error")
+	err := Error(w, 7, "Internal Server Error")
 
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
@@ -159,7 +159,7 @@ func TestFuncError_Empty(t *testing.T) {
 	}
 
 	// Check the response body.
-	expected := `{"code":500,"message":"Internal Server Error"}`
+	expected := `{"code":7,"message":"Internal Server Error"}`
 	res := g.Trim(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
@@ -171,7 +171,7 @@ func TestFuncError_DoubleStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Take first status only...
-	err := Error(w, StatusBadRequest, StatusNotFound)
+	err := Error(w, 7, "Bad Request", WithStatusNotFound())
 
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
@@ -184,7 +184,7 @@ func TestFuncError_DoubleStatus(t *testing.T) {
 	}
 
 	// Check the response body.
-	expected := `{"code":400,"message":"Bad Request"}`
+	expected := `{"code":7,"message":"Bad Request"}`
 	res := g.Trim(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
