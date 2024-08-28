@@ -6,6 +6,11 @@ type ErrorResponse struct {
 	Message string `json:"message"` // error message
 }
 
+// Unpack returns the error code and message.
+func (e *ErrorResponse) Unpack() (code int, message string) {
+	return e.Code, e.Message
+}
+
 // newErrorResponse creates a new errorMessage object with the
 // given code and message. If a message is provided, it will be
 // used as the error message. Otherwise, the default message

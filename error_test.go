@@ -45,3 +45,19 @@ func TestNewErrorMessage(t *testing.T) {
 		}
 	}
 }
+func TestErrorResponse_Unpack(t *testing.T) {
+	err := &ErrorResponse{
+		Code:    200,
+		Message: "OK",
+	}
+
+	code, message := err.Unpack()
+
+	if code != 200 {
+		t.Errorf("Unpack() code = %d, want %d", code, 200)
+	}
+
+	if message != "OK" {
+		t.Errorf("Unpack() message = %s, want %s", message, "OK")
+	}
+}
