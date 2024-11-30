@@ -5,7 +5,7 @@
 
 A lightweight Go package for crafting HTTP responses with ease. Built on top of Go's standard `net/http` package, `resp` simplifies common response patterns while maintaining flexibility and performance.
 
-## ⚠️ Important Note
+## Important Note
 
 This package, like `http.ResponseWriter`, is NOT safe for concurrent use. The `ResponseWriter` should only be written to from a single goroutine, and only until the HTTP handler returns. Writing to `ResponseWriter` after the handler returns or from multiple goroutines may result in corrupted responses or other undefined behavior.
 
@@ -170,7 +170,7 @@ Always check for errors when sending responses:
 func Handler(w http.ResponseWriter, r *http.Request) {
     if err := resp.JSON(w, data); err != nil {
         log.Printf("Failed to send response: %v", err)
-        // Optionally send a fallback error response
+        // Optionally send a fallback error response.
         resp.Error(w, http.StatusInternalServerError, "Internal server error")
         return
     }
@@ -224,12 +224,12 @@ For applications dealing with large JSON payloads, the package supports custom e
 ```go
 import jsoniter "github.com/json-iterator/go"
 
-// Using json-iterator for faster JSON encoding
+// Using json-iterator for faster JSON encoding.
 customEncoder := func(w io.Writer, v interface{}) error {
     return jsoniter.NewEncoder(w).Encode(v)
 }
 
-// Apply custom encoder
+// Apply custom encoder.
 resp.JSON(w, largeData, resp.ApplyJSONEncoder(customEncoder))
 ```
 
@@ -244,7 +244,7 @@ For large responses, consider enabling compression:
 
 ```go
 func Handler(w http.ResponseWriter, r *http.Request) {
-    // Enable gzip compression
+    // Enable gzip compression.
     w.Header().Set("Content-Encoding", "gzip")
     gz := gzip.NewWriter(w)
     defer gz.Close()

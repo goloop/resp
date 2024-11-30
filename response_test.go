@@ -15,7 +15,8 @@ import (
 	"github.com/goloop/g"
 )
 
-// mockErrorWriter implements http.ResponseWriter and returns error on Write
+// Test data structures.
+// mockErrorWriter implements http.ResponseWriter and returns error on Write.
 type mockErrorWriter struct {
 	err error
 	http.ResponseWriter
