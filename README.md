@@ -177,6 +177,98 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+## Benchmarks
+
+Here are the benchmark results showing the performance characteristics of different response types:
+
+```txt
+goos: linux
+goarch: arm64
+pkg: github.com/goloop/resp
+BenchmarkJSONSmall-6               	 3368511	       387.8 ns/op	     335 B/op	       2 allocs/op
+BenchmarkJSONMedium-6              	 1901976	       674.4 ns/op	     620 B/op	       2 allocs/op
+BenchmarkJSONLarge-6               	   57187	     18375 ns/op	   23525 B/op	       2 allocs/op
+BenchmarkJSONPSmall-6              	 2363169	       564.8 ns/op	     604 B/op	       6 allocs/op
+BenchmarkHTML-6                    	 5539548	       359.3 ns/op	     789 B/op	       2 allocs/op
+BenchmarkString-6                  	11819876	        88.43 ns/op	     170 B/op	       2 allocs/op
+BenchmarkError-6                   	 4847616	       231.1 ns/op	     166 B/op	       2 allocs/op
+BenchmarkStream-6                  	12309727	        82.14 ns/op	     206 B/op	       1 allocs/op
+BenchmarkRedirect-6                	11327214	       104.5 ns/op	      64 B/op	       3 allocs/op
+BenchmarkNoContent-6               	21731414	        54.24 ns/op	      48 B/op	       2 allocs/op
+BenchmarkJSONWithCustomEncoder-6   	 1772643	       700.7 ns/op	     661 B/op	       2 allocs/op
+BenchmarkResponseChaining-6        	 2161809	       514.7 ns/op	     426 B/op	       7 allocs/op
+BenchmarkServeFileAsDownload-6     	 6095840	       181.7 ns/op	     256 B/op	       3 allocs/op
+PASS
+ok  	github.com/goloop/resp	20.088s
+
+```
+
+### Performance Insights
+
+1. **Small Responses**: Basic operations like `String`, `NoContent`, and `Redirect` are very efficient, with minimal allocations and sub-microsecond latencies.
+
+2. **JSON Processing**:
+   - Small payloads (335 B) process in ~388ns
+   - Medium payloads (620 B) process in ~674ns
+   - Large payloads (23.5 KB) take significantly longer at ~18.4μs
+
+3. **Memory Allocations**:
+   - Most operations require only 2 allocations
+   - Response chaining requires more allocations (7) due to method chaining
+   - JSONP requires 6 allocations due to additional string processing
+
+### Optimizing Large Payloads
+
+For applications dealing with large JSON payloads, the package supports custom encoders. Here's how to use alternative JSON encoders for better performance:
+
+```go
+import jsoniter "github.com/json-iterator/go"
+
+// Using json-iterator for faster JSON encoding
+customEncoder := func(w io.Writer, v interface{}) error {
+    return jsoniter.NewEncoder(w).Encode(v)
+}
+
+// Apply custom encoder
+resp.JSON(w, largeData, resp.ApplyJSONEncoder(customEncoder))
+```
+
+Popular JSON encoding alternatives:
+- [json-iterator/go](https://github.com/json-iterator/go): Claims 100% compatibility with standard lib
+- [easyjson](https://github.com/mailru/easyjson): Requires code generation
+- [sonic](https://github.com/bytedance/sonic): High-performance JSON encoder/decoder
+
+### Compression Options
+
+For large responses, consider enabling compression:
+
+```go
+func Handler(w http.ResponseWriter, r *http.Request) {
+    // Enable gzip compression
+    w.Header().Set("Content-Encoding", "gzip")
+    gz := gzip.NewWriter(w)
+    defer gz.Close()
+
+    resp.JSON(gz, largeData, resp.AsApplicationJSON())
+}
+```
+
+### Best Practices for Performance
+
+1. Use appropriate response types for your data:
+   - `String()` for simple text responses
+   - `Stream()` for large files or real-time data
+   - `JSON()` with custom encoders for large JSON payloads
+
+2. Consider response size:
+   - Enable compression for large responses
+   - Use pagination for large datasets
+   - Consider streaming for very large data
+
+3. Memory efficiency:
+   - Use `Stream()` for large files instead of loading them into memory
+   - Consider using response pooling for high-throughput scenarios
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

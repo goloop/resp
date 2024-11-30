@@ -1,0 +1,18 @@
+goos: linux
+goarch: arm64
+pkg: github.com/goloop/resp
+BenchmarkJSONSmall-6               	 3368511	       387.8 ns/op	     335 B/op	       2 allocs/op
+BenchmarkJSONMedium-6              	 1901976	       674.4 ns/op	     620 B/op	       2 allocs/op
+BenchmarkJSONLarge-6               	   57187	     18375 ns/op	   23525 B/op	       2 allocs/op
+BenchmarkJSONPSmall-6              	 2363169	       564.8 ns/op	     604 B/op	       6 allocs/op
+BenchmarkHTML-6                    	 5539548	       359.3 ns/op	     789 B/op	       2 allocs/op
+BenchmarkString-6                  	11819876	        88.43 ns/op	     170 B/op	       2 allocs/op
+BenchmarkError-6                   	 4847616	       231.1 ns/op	     166 B/op	       2 allocs/op
+BenchmarkStream-6                  	12309727	        82.14 ns/op	     206 B/op	       1 allocs/op
+BenchmarkRedirect-6                	11327214	       104.5 ns/op	      64 B/op	       3 allocs/op
+BenchmarkNoContent-6               	21731414	        54.24 ns/op	      48 B/op	       2 allocs/op
+BenchmarkJSONWithCustomEncoder-6   	 1772643	       700.7 ns/op	     661 B/op	       2 allocs/op
+BenchmarkResponseChaining-6        	 2161809	       514.7 ns/op	     426 B/op	       7 allocs/op
+BenchmarkServeFileAsDownload-6     	 6095840	       181.7 ns/op	     256 B/op	       3 allocs/op
+PASS
+ok  	github.com/goloop/resp	20.088s
