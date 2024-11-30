@@ -56,7 +56,7 @@ go get -u github.com/goloop/resp
 ```go
 import "github.com/goloop/resp"
 
-// Simple JSON response
+// Simple JSON response.
 func HandleJSON(w http.ResponseWriter, r *http.Request) {
     data := resp.R{
         "message": "Hello, World!",
@@ -68,7 +68,7 @@ func HandleJSON(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-// HTML response with status code
+// HTML response with status code.
 func HandleHTML(w http.ResponseWriter, r *http.Request) {
     html := `<h1>Hello World</h1>`
     if err := resp.HTML(w, html, resp.WithStatus(http.StatusOK)); err != nil {
@@ -76,7 +76,7 @@ func HandleHTML(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-// Error response
+// Error response.
 func HandleError(w http.ResponseWriter, r *http.Request) {
     resp.Error(w, http.StatusNotFound, "Resource not found")
 }
@@ -109,13 +109,13 @@ func HandleCustomJSON(w http.ResponseWriter, r *http.Request) {
 
 ```go
 func HandleFileDownload(w http.ResponseWriter, r *http.Request) {
-    // Serve static file
+    // Serve static file.
     if err := resp.ServeFile(w, r, "path/to/file.pdf",
         resp.AddContentDisposition("attachment", "document.pdf")); err != nil {
         log.Printf("File serving failed: %v", err)
     }
 
-    // Serve dynamic content as file
+    // Serve dynamic content as file.
     data := []byte("Dynamic content")
     if err := resp.ServeFileAsDownload(w, "file.txt", data); err != nil {
         log.Printf("Download failed: %v", err)
@@ -235,7 +235,7 @@ resp.JSON(w, largeData, resp.ApplyJSONEncoder(customEncoder))
 
 Popular JSON encoding alternatives:
 - [json-iterator/go](https://github.com/json-iterator/go): Claims 100% compatibility with standard lib
-- [easyjson](https://github.com/mailru/easyjson): Requires code generation
+- [go-json](https://github.com/goccy/go-json): High performance with code generation
 - [sonic](https://github.com/bytedance/sonic): High-performance JSON encoder/decoder
 
 ### Compression Options
