@@ -1,0 +1,9 @@
+goos: linux
+goarch: arm64
+pkg: github.com/goloop/resp
+BenchmarkJSON/SmallJSON-6     	 1809045	       787.5 ns/op	     597 B/op	       3 allocs/op
+BenchmarkJSON/LargeJSON-6     	    2863	    485923 ns/op	  423181 B/op	    1002 allocs/op
+BenchmarkJSON/JSONWithHeaders-6         	 1229444	      1008 ns/op	     616 B/op	      11 allocs/op
+BenchmarkString/SmallString-6           	17929503	        71.30 ns/op	      68 B/op	       2 allocs/op
+BenchmarkString/LargeString-6           	signal: killed
+FAIL	github.com/goloop/resp	16.469s

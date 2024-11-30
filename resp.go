@@ -1,9 +1,36 @@
 package resp
 
 import (
+	"bytes"
 	"io"
 	"net/http"
+	"sync"
 )
+
+// jsonBufPool is a pool of bytes.Buffer used for JSON encoding.
+var jsonBufPool = sync.Pool{
+	New: func() interface{} {
+		return bytes.NewBuffer(make([]byte, 0, 1024))
+	},
+}
+
+var jsonpBufPool = sync.Pool{
+	New: func() interface{} {
+		return bytes.NewBuffer(make([]byte, 0, 4096))
+	},
+}
+
+var largeBufPool = sync.Pool{
+	New: func() interface{} {
+		return bytes.NewBuffer(make([]byte, 0, 32*1024)) // 32KB
+	},
+}
+
+var cookiePool = sync.Pool{
+	New: func() interface{} {
+		return &http.Cookie{}
+	},
+}
 
 // R is a type alias for a map[string]interface{}. It is designed to simplify
 // the creation and manipulation of JSON objects in Go, making it easier to
@@ -85,6 +112,12 @@ type R map[string]any
 func JSON(w http.ResponseWriter, data any, opts ...Option) error {
 	response := NewResponse(w, opts...)
 	return response.JSON(data)
+}
+
+// StreamJSON sends a JSON stream response to the client.
+func StreamJSON(w http.ResponseWriter, data any, opts ...Option) error {
+	response := NewResponse(w, opts...)
+	return response.StreamJSON(data)
 }
 
 // JSONP sends a JSONP (JSON with Padding) response to the client.

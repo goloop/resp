@@ -1,0 +1,24 @@
+goos: linux
+goarch: arm64
+pkg: github.com/goloop/resp
+BenchmarkJSON/SmallJSON-6     	 1967288	       658.5 ns/op	     561 B/op	       3 allocs/op
+BenchmarkJSON/LargeJSON-6     	    2779	    537360 ns/op	  434426 B/op	    1002 allocs/op
+BenchmarkJSON/JSONWithHeaders-6         	 1276960	       953.0 ns/op	     608 B/op	      11 allocs/op
+BenchmarkString/SmallString-6           	17970987	        72.69 ns/op	      68 B/op	       2 allocs/op
+BenchmarkString/LargeString-6           	   74065	     33546 ns/op	  128769 B/op	       2 allocs/op
+BenchmarkError/SimpleError-6            	 5810762	       209.5 ns/op	     117 B/op	       2 allocs/op
+BenchmarkError/ErrorWithCustomStatus-6  	 6206474	       237.3 ns/op	     221 B/op	       2 allocs/op
+BenchmarkStream/SmallStream-6           	23041851	        62.38 ns/op	      69 B/op	       1 allocs/op
+BenchmarkStream/LargeStream-6           	  113702	     11312 ns/op	   56684 B/op	       1 allocs/op
+BenchmarkHTML/SmallHTML-6               	14312425	        73.21 ns/op	     123 B/op	       2 allocs/op
+BenchmarkHTML/LargeHTML-6               	 1000000	      1001 ns/op	    9922 B/op	       2 allocs/op
+BenchmarkCookie/SetCookie-6             	 3355566	       360.8 ns/op	     267 B/op	       2 allocs/op
+BenchmarkCookie/DeleteCookie-6          	19271035	        62.11 ns/op	      24 B/op	       1 allocs/op
+BenchmarkHeaders/SetSingleHeader-6      	 5677519	       210.5 ns/op	     168 B/op	       6 allocs/op
+BenchmarkHeaders/SetMultipleHeaders-6   	 1799365	       683.6 ns/op	     711 B/op	      13 allocs/op
+BenchmarkResponseCreation/SimpleResponse-6         	46572822	        24.78 ns/op	      24 B/op	       1 allocs/op
+BenchmarkResponseCreation/ResponseWithOptions-6    	 1954876	       583.0 ns/op	     517 B/op	      14 allocs/op
+BenchmarkJSONP/SmallJSONP-6                        	 1453501	       774.7 ns/op	    1090 B/op	       6 allocs/op
+BenchmarkJSONP/LargeJSONP-6                        	    2574	    580720 ns/op	  833941 B/op	    1005 allocs/op
+PASS
+ok  	github.com/goloop/resp	33.364s

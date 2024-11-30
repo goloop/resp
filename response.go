@@ -1,6 +1,7 @@
 package resp
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -111,9 +112,17 @@ func (r *Response) ClearHeaders() *Response {
 }
 
 // SetCookie sets a cookie in the response and returns the modified response.
+
 func (r *Response) SetCookie(cookie *http.Cookie) *Response {
-	http.SetCookie(r.httpWriter, cookie)
+	// We use strings.Builder instead of concatenation.
+	var b strings.Builder
+	b.Grow(len(cookie.Name) + len(cookie.Value) + 50)
+
+	b.WriteString(cookie.String())
+	r.httpWriter.Header().Add("Set-Cookie", b.String())
 	return r
+	// http.SetCookie(r.httpWriter, cookie)
+	// return r
 }
 
 // BindCookie binds a cookie to the response. If a cookie with the same
@@ -177,9 +186,31 @@ func (r *Response) ExpiredCookie(name string) *Response {
 // If the status code is not set - StatusOK will be set.
 // If ContentType isn't defined - MIMEApplicationJSON will be used by default.
 func (r *Response) JSON(data any) error {
+	buf := jsonBufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+
+	defer jsonBufPool.Put(buf)
+
+	if err := json.NewEncoder(buf).Encode(data); err != nil {
+		return err
+	}
+
 	r.prepare(StatusOK, MIMEApplicationJSONCharsetUTF8)
 	r.httpWriter.WriteHeader(r.statusCode)
-	return json.NewEncoder(r.httpWriter).Encode(data)
+	_, err := io.Copy(r.httpWriter, buf)
+
+	return err
+}
+
+// StreamJSON sends a JSON stream response.
+func (r *Response) StreamJSON(data any) error {
+	r.prepare(StatusOK, MIMEApplicationJSONCharsetUTF8)
+	r.httpWriter.WriteHeader(r.statusCode)
+
+	enc := json.NewEncoder(r.httpWriter)
+	enc.SetEscapeHTML(false) // reduce the number of allocations
+
+	return enc.Encode(data)
 }
 
 // JSONP sends a JSONP response.
@@ -187,14 +218,34 @@ func (r *Response) JSON(data any) error {
 // If ContentType isn't defined - MIMEApplicationJavaScript will
 // be used by default.
 func (r *Response) JSONP(data any, callback string) error {
-	resp, err := json.Marshal(data)
-	if err != nil {
+	// resp, err := json.Marshal(data)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// r.prepare(StatusOK, MIMEApplicationJavaScriptCharsetUTF8)
+	// r.httpWriter.WriteHeader(r.statusCode)
+	// _, err = r.httpWriter.Write([]byte(callback + "(" + string(resp) + ");"))
+	// return err
+
+	buf := jsonpBufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer jsonpBufPool.Put(buf)
+
+	buf.WriteString(callback)
+	buf.WriteByte('(')
+
+	if err := json.NewEncoder(buf).Encode(data); err != nil {
 		return err
 	}
 
+	// Remove trailing newline from encoder.
+	buf.Truncate(buf.Len() - 1)
+	buf.WriteString(");")
+
 	r.prepare(StatusOK, MIMEApplicationJavaScriptCharsetUTF8)
 	r.httpWriter.WriteHeader(r.statusCode)
-	_, err = r.httpWriter.Write([]byte(callback + "(" + string(resp) + ");"))
+	_, err := io.Copy(r.httpWriter, buf)
 	return err
 }
 
@@ -202,6 +253,18 @@ func (r *Response) JSONP(data any, callback string) error {
 // If the status code is not set - StatusOK will be set.
 // If ContentType isn't defined - MIMETextPlain will be used by default.
 func (r *Response) String(data string) error {
+	if len(data) > 32*1024 {
+		buf := largeBufPool.Get().(*bytes.Buffer)
+		buf.Reset()
+		defer largeBufPool.Put(buf)
+
+		buf.WriteString(data)
+		r.prepare(StatusOK, MIMETextPlain)
+		r.httpWriter.WriteHeader(r.statusCode)
+		_, err := io.Copy(r.httpWriter, buf)
+		return err
+	}
+
 	r.prepare(StatusOK, MIMETextPlain)
 	r.httpWriter.WriteHeader(r.statusCode)
 	_, err := r.httpWriter.Write([]byte(data))
@@ -224,10 +287,19 @@ func (r *Response) Error(code int, message string) error {
 
 // Stream sends a stream response.
 func (r *Response) Stream(data io.Reader) error {
+	// For large files, use buffered copy.
+	buf := make([]byte, 32*1024)
+
 	r.prepare(StatusOK, MIMEOctetStream)
 	r.httpWriter.WriteHeader(r.statusCode)
-	_, err := io.Copy(r.httpWriter, data)
+
+	_, err := io.CopyBuffer(r.httpWriter, data, buf)
 	return err
+
+	// r.prepare(StatusOK, MIMEOctetStream)
+	// r.httpWriter.WriteHeader(r.statusCode)
+	// _, err := io.Copy(r.httpWriter, data)
+	// return err
 }
 
 // File sends a file response.
