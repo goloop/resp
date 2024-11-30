@@ -424,21 +424,28 @@ func AddRetryAfter[T int | time.Time | time.Duration](value T) Option {
 			stringValue = v.Format(time.RFC1123)
 		case time.Duration:
 			stringValue = strconv.Itoa(int(v.Seconds()))
-		default:
-			panic("AddRetryAfter: unsupported type of value")
 		}
+
 		return WithHeader(HeaderRetryAfter, stringValue)(r)
 	}
 }
 
 // AddContentDisposition sets the Content-Disposition header.
-func AddContentDisposition(dispositionType, filename string, useUTF8Encoding ...bool) Option {
+func AddContentDisposition(
+	dispositionType,
+	filename string,
+	useUTF8Encoding ...bool,
+) Option {
 	return func(r *Response) *Response {
 		// Check if UTF-8 encoding is needed for the filename.
 		if len(useUTF8Encoding) > 0 && useUTF8Encoding[0] {
 			// Encode the filename using URL encoding.
 			encodedFilename := url.PathEscape(filename)
-			value := fmt.Sprintf(`%s; filename*=UTF-8''%s`, dispositionType, encodedFilename)
+			value := fmt.Sprintf(
+				`%s; filename*=UTF-8''%s`,
+				dispositionType,
+				encodedFilename,
+			)
 			return WithHeader(HeaderContentDisposition, value)(r)
 		} else {
 			// Standard encoding.
@@ -854,4 +861,24 @@ func AsApplicationJSONCharsetUTF8() Option {
 // to application/javascript; charset=utf-8.
 func AsApplicationJavaScriptCharsetUTF8() Option {
 	return AddContentType(MIMEApplicationJavaScriptCharsetUTF8)
+}
+
+// ApplyJSONEncoder sets the custom JSON encoder function.
+// This allows us to use a different JSON encoding library
+// or customize encoding.
+//
+// Example Usage:
+//
+//	import jsoniter "github.com/json-iterator/go"
+//
+//	customEncoder := func(w io.Writer, v interface{}) error {
+//	    return jsoniter.NewEncoder(w).Encode(v)
+//	}
+//
+//	response := resp.NewResponse(w, resp.ApplyJSONEncoder(customEncoder))
+func ApplyJSONEncoder(encodeFunc JSONEncodeFunc) Option {
+	return func(r *Response) *Response {
+		r.jsonEncodeFunc = encodeFunc
+		return r
+	}
 }

@@ -1,7 +1,9 @@
 package resp
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -317,6 +319,44 @@ func TestJSON(t *testing.T) {
 	}
 }
 
+// TestJSON_CustomEncoder tests the JSON method with a custom encoder.
+func TestJSON_CustomEncoder(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	// Define a custom encoder function that pretty-prints the JSON.
+	customEncoder := func(w io.Writer, v interface{}) error {
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "    ") // Use indentation to modify output
+		return encoder.Encode(v)
+	}
+
+	// Create a response with the custom encoder.
+	r := NewResponse(w, ApplyJSONEncoder(customEncoder))
+
+	data := map[string]string{"hello": "world"}
+	err := r.JSON(data)
+	if err != nil {
+		t.Errorf("JSON() returned an error: %v", err)
+	}
+
+	// Check that the Content-Type header is set correctly.
+	gotContentType := w.Header().Get("Content-Type")
+	if want := MIMEApplicationJSONCharsetUTF8; gotContentType != want {
+		t.Errorf("JSON() Content-Type = %v, want %v", gotContentType, want)
+	}
+
+	// Generate the expected body using the same custom encoder.
+	var expectedBodyBuffer bytes.Buffer
+	customEncoder(&expectedBodyBuffer, data)
+	expectedBody := expectedBodyBuffer.String()
+
+	// Compare the response body to the expected body.
+	resBody := w.Body.String()
+	if resBody != expectedBody {
+		t.Errorf("JSON() body = %v, want %v", resBody, expectedBody)
+	}
+}
+
 // TestJSONP tests the JSONP method.
 func TestJSONP(t *testing.T) {
 	w := httptest.NewRecorder()
@@ -341,6 +381,52 @@ func TestJSONP(t *testing.T) {
 	res := w.Body.String()
 	if res != expected {
 		t.Errorf("JSONP() body = %v, want %v", res, expected)
+	}
+}
+
+// TestJSONP_CustomEncoder tests the JSONP method with a custom encoder.
+func TestJSONP_CustomEncoder(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	// Define a custom encoder function that pretty-prints the JSON.
+	customEncoder := func(w io.Writer, v interface{}) error {
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "    ") // Use indentation to modify output
+		return encoder.Encode(v)
+	}
+
+	// Create a response with the custom encoder.
+	r := NewResponse(w, ApplyJSONEncoder(customEncoder))
+
+	data := map[string]string{"hello": "world"}
+	callback := "callbackFunction"
+	err := r.JSONP(data, callback)
+	if err != nil {
+		t.Errorf("JSONP() returned an error: %v", err)
+	}
+
+	// Check that the Content-Type header is set correctly.
+	gotContentType := w.Header().Get("Content-Type")
+	if want := MIMEApplicationJavaScriptCharsetUTF8; gotContentType != want {
+		t.Errorf("JSONP() Content-Type = %v, want %v", gotContentType, want)
+	}
+
+	// Generate the expected body using the same custom encoder.
+	var jsonBuffer bytes.Buffer
+	customEncoder(&jsonBuffer, data)
+
+	// Remove the trailing newline added by encoder.Encode
+	jsonData := jsonBuffer.Bytes()
+	if len(jsonData) > 0 && jsonData[len(jsonData)-1] == '\n' {
+		jsonData = jsonData[:len(jsonData)-1]
+	}
+
+	expectedBody := fmt.Sprintf("%s(%s);", callback, jsonData)
+
+	// Compare the response body to the expected body.
+	resBody := w.Body.String()
+	if resBody != expectedBody {
+		t.Errorf("JSONP() body = %v, want %v", resBody, expectedBody)
 	}
 }
 

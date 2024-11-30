@@ -3,145 +3,184 @@
 
 # resp
 
-The resp package offers a streamlined interface for crafting a variety of HTTP responses in your Go web applications and APIs. Leveraging the power of Go's standard net/http library, resp adds a layer of convenience that simplifies common tasks such as sending JSON and HTML responses, managing cookies, handling file downloads, and streaming content.
+A lightweight Go package for crafting HTTP responses with ease. Built on top of Go's standard `net/http` package, `resp` simplifies common response patterns while maintaining flexibility and performance.
+
+## ⚠️ Important Note
+
+This package, like `http.ResponseWriter`, is NOT safe for concurrent use. The `ResponseWriter` should only be written to from a single goroutine, and only until the HTTP handler returns. Writing to `ResponseWriter` after the handler returns or from multiple goroutines may result in corrupted responses or other undefined behavior.
+
+For safe concurrent operations, use channels to collect results and write to the ResponseWriter in the main goroutine:
+
+```go
+func Handler(w http.ResponseWriter, r *http.Request) {
+    resultChan := make(chan MyData)
+    errChan := make(chan error)
+
+    go func() {
+        data, err := processData()
+        if err != nil {
+            errChan <- err
+            return
+        }
+        resultChan <- data
+    }()
+
+    select {
+    case err := <-errChan:
+        resp.Error(w, http.StatusInternalServerError, err.Error())
+    case result := <-resultChan:
+        resp.JSON(w, result)
+    case <-time.After(5 * time.Second):
+        resp.Error(w, http.StatusGatewayTimeout, "Processing timeout")
+    }
+}
+```
 
 ## Features
 
- - Simplified Response Handling: Easily send JSON, HTML, and plain text responses with minimal code.
- - Flexible Header and Status Code Management: Set custom HTTP headers and status codes effortlessly.
- - Cookie Management: Intuitive methods for setting, deleting, and expiring cookies.
- - File Downloads and Streaming: Tools for sending files as downloads or streaming content directly to the client.
- - Seamless Integration: Works out of the box with Go's HTTP server and middleware ecosystem, requiring no additional setup.
+- 🚀 Quick and intuitive response methods (JSON, HTML, String, etc.)
+- 🛠️ Flexible header and status code management
+- 🍪 Simple cookie handling
+- 📁 File streaming and downloads
+- ⚙️ Custom JSON encoder support
+- 🔧 Chainable response options
 
-## Getting Started
+## Installation
 
-To begin using resp, install the package using `go get`:
-
-```
-$ go get github.com/goloop/resp
-```
-
-Then, import it into your project:
-
-```
-import (
-	"github.com/goloop/resp"
-)
+```bash
+go get -u github.com/goloop/resp
 ```
 
-### Example Usage
-
-Below is a quick example to get you started:
+## Basic Usage
 
 ```go
-package main
+import "github.com/goloop/resp"
 
-import (
-	"encoding/json"
-	"log"
-	"net/http"
+// Simple JSON response
+func HandleJSON(w http.ResponseWriter, r *http.Request) {
+    data := resp.R{
+        "message": "Hello, World!",
+        "status": "success",
+    }
 
-	"github.com/goloop/resp"
-)
-
-// Item represents a single some item.
-type Item struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+    if err := resp.JSON(w, data); err != nil {
+        log.Printf("Failed to send response: %v", err)
+    }
 }
 
-// items is a slice of Item.
-// We use it as a test database.
-var items []Item
-
-// GetItems sends all items as a JSON response.
-func GetItems(w http.ResponseWriter, r *http.Request) {
-	// Send the items as a `application/json; charset=utf-8` response
-	// with a 200 status code.
-	resp.JSON(w, items)
+// HTML response with status code
+func HandleHTML(w http.ResponseWriter, r *http.Request) {
+    html := `<h1>Hello World</h1>`
+    if err := resp.HTML(w, html, resp.WithStatus(http.StatusOK)); err != nil {
+        log.Printf("Failed to send response: %v", err)
+    }
 }
 
-// GetItem finds and sends a single item by ID as a JSON response.
-func GetItem(w http.ResponseWriter, r *http.Request) {
-	// Try to get the id from the URL query.
-	id := r.PathValue("id")
-
-	// Find the item by ID.
-	for _, item := range items {
-		if item.ID == id {
-			// Extended response.
-			// Send the item as a `application/json` response
-			// with a 200 status code.
-			resp.JSON(w, item, resp.AsApplicationJSON(), resp.WithStatusOK())
-			return
-		}
-	}
-
-	// The error message is taken from the status code.
-	resp.Error(w, http.StatusNotFound)
-}
-
-// CreateItem adds a new item from the request body to the items slice.
-func CreateItem(w http.ResponseWriter, r *http.Request) {
-	var item Item
-	if err := json.NewDecoder(r.Body).Decode(&item); err != nil {
-		//  Sets the custom error message.
-		resp.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	items = append(items, item)
-	resp.JSON(w, items)
-}
-
-func main() {
-	router := http.NewServeMux()
-
-	router.HandleFunc("GET /items/{id}", GetItem)
-	router.HandleFunc("GET /items", GetItems)
-	router.HandleFunc("POST /item", CreateItem)
-
-	log.Println("Server is running on port 8000")
-	log.Fatal(http.ListenAndServe(":8000", router))
+// Error response
+func HandleError(w http.ResponseWriter, r *http.Request) {
+    resp.Error(w, http.StatusNotFound, "Resource not found")
 }
 ```
 
-This code snippet demonstrates basic CRUD operations for an in-memory list of items, showcasing how the resp package can be used to simplify response handling in your Go web applications.
+## Advanced Features
 
-Test usage:
+### Custom JSON Encoder
 
+You can use any JSON encoder that satisfies the `JSONEncodeFunc` interface:
+
+```go
+import jsoniter "github.com/json-iterator/go"
+
+func HandleCustomJSON(w http.ResponseWriter, r *http.Request) {
+    customEncoder := func(w io.Writer, v interface{}) error {
+        return jsoniter.NewEncoder(w).Encode(v)
+    }
+
+    response := resp.NewResponse(w, resp.ApplyJSONEncoder(customEncoder))
+    data := resp.R{"message": "Using custom encoder"}
+
+    if err := response.JSON(data); err != nil {
+        log.Printf("Encoding failed: %v", err)
+    }
+}
 ```
-$ curl -X POST -H "Content-Type: application/json" -d "{\"id\": \"10\", \"name\": \"john\"}" http://localhost:8000/item
-[{"id":"10","name":"john"}]
 
-$ curl -X POST -H "Content-Type: application/json" -d "{\"id\": \"11\", \"name\": \"bob\"}" http://localhost:8000/item
-[{"id":"10","name":"john"},{"id":"11","name":"bob"}]
+### File Downloads
 
-$ curl localhost:8000/items
-[{"id":"10","name":"john"},{"id":"11","name":"bob"}]
+```go
+func HandleFileDownload(w http.ResponseWriter, r *http.Request) {
+    // Serve static file
+    if err := resp.ServeFile(w, r, "path/to/file.pdf",
+        resp.AddContentDisposition("attachment", "document.pdf")); err != nil {
+        log.Printf("File serving failed: %v", err)
+    }
 
-$ curl localhost:8000/items/11
-{"id":"11","name":"bob"}
+    // Serve dynamic content as file
+    data := []byte("Dynamic content")
+    if err := resp.ServeFileAsDownload(w, "file.txt", data); err != nil {
+        log.Printf("Download failed: %v", err)
+    }
+}
 ```
 
-## Hot features
+### Response Chaining
 
-Quick call functions.
+```go
+func HandleChainedResponse(w http.ResponseWriter, r *http.Request) {
+    response := resp.NewResponse(w).
+        SetStatus(http.StatusOK).
+        SetHeader("X-Custom-Header", "value")
 
- - **JSON** - function initializes a new HTTP response with optional settings, sets the content type to `application/json; charset=utf-8`, and encodes the given data into JSON format for sending to the client.
- - **JSONP** - function encodes the provided data as JSON, wraps it in a client-specified callback for cross-domain requests, and sends this JSONP response to the client.
- - **String** - function sends a text response, such as plain text, to the client with optional configurations for headers and status codes, simplifying the delivery of text-based content.
- - **Error** - function sends an HTTP error response with a customizable status code and message, offering flexibility in error reporting by allowing either a status code or a message as the primary argument, with optional detailed status codes and messages for enhanced context.
- - **Stream** - function enables the delivery of streaming content, like file downloads or live video, directly to the client by reading from an io.Reader and writing to the http.ResponseWriter, with support for custom headers and status codes to tailor the response as needed.
- - **ServeFile** - function streamlines the delivery of static files to the client, utilizing http.ServeFile for automatic content type detection, range request handling, and caching, while offering the flexibility to set custom response headers and status codes.
- - **ServeFileAsDownload** - function facilitates serving in-memory data or dynamically generated content as a file download by setting the Content-Disposition header, with the capability to customize the response through various options for headers, status codes, and other settings.
- - **Redirect** - function orchestrates HTTP redirects, setting the status to 302 Found by default, and allows for flexible redirection to a specified URL with options for customizing the response, such as changing the redirect status code.
- - **NoContent** - function conveys a 204 No Content response to clients, ideal for operations that require no return data, with the flexibility to modify the response via optional configurations for headers or other settings.
- - **HTML** - function facilitates the delivery of HTML content to the client, defaulting to a "text/html" Content-Type, and offers customization through optional configurations for headers and status codes, ideal for serving web pages or HTML snippets.
+    if err := response.JSON(resp.R{"status": "success"}); err != nil {
+        log.Printf("Response failed: %v", err)
+    }
+}
+```
 
-## Types
+### Header Management
 
-The provided types allow us to manage responses more conveniently.
+```go
+func HandleHeaders(w http.ResponseWriter, r *http.Request) {
+    opts := []resp.Option{
+        resp.WithHeader("X-Custom-Header", "value"),
+        resp.AddContentType("application/json"),
+        resp.AddETag("\"123456\""),
+        resp.AsApplicationJSON(),
+    }
 
- - **R** is a type alias for `map[string]interface{}` in Go, designed to facilitate the construction and manipulation of JSON objects for HTTP responses. It offers a flexible and concise way to handle dynamic data structures, reducing boilerplate and enhancing code readability in web applications and APIs.
- - **Response** - type encapsulates an HTTP response, offering methods to manipulate headers, cookies, and the response body for streamlined server-side communication. Utilizing `NewResponse` for its creation ensures that any provided options, such as custom headers or status codes, are applied correctly from the start, establishing a robust foundation for handling HTTP responses with enhanced flexibility and control.
+    if err := resp.JSON(w, data, opts...); err != nil {
+        log.Printf("Response failed: %v", err)
+    }
+}
+```
+
+## Default Behaviors
+
+- If no status code is set, `200 OK` is used
+- Content-Type headers are automatically set based on the response type:
+  - JSON: `application/json; charset=utf-8`
+  - HTML: `text/html; charset=utf-8`
+  - String: `text/plain; charset=utf-8`
+
+## Error Handling
+
+Always check for errors when sending responses:
+
+```go
+func Handler(w http.ResponseWriter, r *http.Request) {
+    if err := resp.JSON(w, data); err != nil {
+        log.Printf("Failed to send response: %v", err)
+        // Optionally send a fallback error response
+        resp.Error(w, http.StatusInternalServerError, "Internal server error")
+        return
+    }
+}
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

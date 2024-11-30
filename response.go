@@ -1,7 +1,9 @@
 package resp
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -10,22 +12,54 @@ import (
 	"github.com/goloop/g"
 )
 
+// JSONEncodeFunc represents a function that encodes the provided data
+// into JSON and writes it to the provided io.Writer.
+// This allows for custom JSON encoding strategies.
+//
+// Example Usage:
+//
+//	// Using a custom JSON encoder with jsoniter
+//	import jsoniter "github.com/json-iterator/go"
+//
+//	customEncoder := func(w io.Writer, v interface{}) error {
+//	    return jsoniter.NewEncoder(w).Encode(v)
+//	}
+//
+//	resp.JSON(w, data, resp.ApplyJSONEncoder(customEncoder))
+type JSONEncodeFunc func(w io.Writer, v interface{}) error
+
 // Response represents an HTTP response.
 // It provides methods for setting headers, cookies, and writing data
-// to the response body.
+// to the response body. It can be customized using various options.
+//
+// Example Usage:
+//
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    response := resp.NewResponse(w, resp.WithStatus(http.StatusOK))
+//	    response.SetHeader("X-Custom-Header", "value")
+//	    response.JSON(resp.R{"message": "Hello, World!"})
+//	}
 type Response struct {
-	httpWriter http.ResponseWriter
-	statusCode int
+	httpWriter     http.ResponseWriter
+	statusCode     int
+	jsonEncodeFunc JSONEncodeFunc
 }
 
 // NewResponse creates a new instance of Response with the provided
 // http.ResponseWriter and options. It applies the provided options
-// to the response and returns the pointer of created response.
+// to the response and returns the pointer to the created response.
+//
+// Example Usage:
+//
+//	response := resp.NewResponse(w, resp.WithStatus(http.StatusOK),
+//	    resp.AsApplicationJSON(),
+//	    resp.ApplyJSONEncoder(customEncoder))
 func NewResponse(w http.ResponseWriter, opts ...Option) *Response {
 	// Create a new response with the provided http.ResponseWriter.
 	response := &Response{
-		httpWriter: w,
-		statusCode: StatusUndefined,
+		httpWriter:     w,
+		statusCode:     StatusUndefined,
+		jsonEncodeFunc: nil,
 	}
 
 	// Apply the provided options to the response.
@@ -54,6 +88,19 @@ func (r *Response) prepare(defStatus int, defContentType ...string) {
 	if r.statusCode == StatusUndefined {
 		r.statusCode = defStatus
 	}
+}
+
+// SetJSONEncoder sets the custom JSON encoder function for the response
+// and returns pointer to the modified response object.
+func (r *Response) SetJSONEncoder(f JSONEncodeFunc) *Response {
+	r.jsonEncodeFunc = f
+	return r
+}
+
+// GetJSONEncoder returns the JSON encoder function of the response.
+// If the JSON encoder function is not set, it returns nil.
+func (r *Response) GetJSONEncoder() JSONEncodeFunc {
+	return r.jsonEncodeFunc
 }
 
 // SetStatus sets the status code of the response and returns
@@ -179,7 +226,18 @@ func (r *Response) ExpiredCookie(name string) *Response {
 func (r *Response) JSON(data any) error {
 	r.prepare(StatusOK, MIMEApplicationJSONCharsetUTF8)
 	r.httpWriter.WriteHeader(r.statusCode)
-	return json.NewEncoder(r.httpWriter).Encode(data)
+
+	if r.jsonEncodeFunc != nil {
+		if err := r.jsonEncodeFunc(r.httpWriter, data); err != nil {
+			return fmt.Errorf("custom JSON encoder failed: %w", err)
+		}
+		return nil
+	}
+
+	if err := json.NewEncoder(r.httpWriter).Encode(data); err != nil {
+		return fmt.Errorf("failed to encode JSON response: %w", err)
+	}
+	return nil
 }
 
 // JSONP sends a JSONP response.
@@ -187,15 +245,36 @@ func (r *Response) JSON(data any) error {
 // If ContentType isn't defined - MIMEApplicationJavaScript will
 // be used by default.
 func (r *Response) JSONP(data any, callback string) error {
-	resp, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
 	r.prepare(StatusOK, MIMEApplicationJavaScriptCharsetUTF8)
 	r.httpWriter.WriteHeader(r.statusCode)
-	_, err = r.httpWriter.Write([]byte(callback + "(" + string(resp) + ");"))
-	return err
+
+	var buf bytes.Buffer
+
+	var err error
+	if r.jsonEncodeFunc != nil {
+		err = r.jsonEncodeFunc(&buf, data)
+		if err != nil {
+			return fmt.Errorf("custom JSON encoder failed in JSONP: %w", err)
+		}
+	} else {
+		if err := json.NewEncoder(&buf).Encode(data); err != nil {
+			return fmt.Errorf("failed to encode JSONP data: %w", err)
+		}
+	}
+
+	// Remove the trailing newline character if present.
+	jsonData := buf.Bytes()
+	if len(jsonData) > 0 && jsonData[len(jsonData)-1] == '\n' {
+		jsonData = jsonData[:len(jsonData)-1]
+	}
+
+	// Write the JSONP response.
+	_, err = fmt.Fprintf(r.httpWriter, "%s(%s);", callback, jsonData)
+	if err != nil {
+		return fmt.Errorf("failed to write JSONP response: %w", err)
+	}
+
+	return nil
 }
 
 // String sends a string response.
