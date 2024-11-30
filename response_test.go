@@ -3,6 +3,7 @@ package resp
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,22 @@ import (
 
 	"github.com/goloop/g"
 )
+
+// mockErrorWriter implements http.ResponseWriter and returns error on Write
+type mockErrorWriter struct {
+	err error
+	http.ResponseWriter
+}
+
+func (w *mockErrorWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+
+func (w *mockErrorWriter) Header() http.Header {
+	return http.Header{}
+}
+
+func (w *mockErrorWriter) WriteHeader(statusCode int) {}
 
 // TestNewResponse tests the NewResponse function.
 func TestNewResponse(t *testing.T) {
@@ -50,6 +67,37 @@ func TestPrepare(t *testing.T) {
 	if response.statusCode != http.StatusOK {
 		t.Errorf("Prepare() did not set status code correctly,"+
 			"got %v, want %v", response.statusCode, http.StatusOK)
+	}
+}
+
+// TestSetGetJSONEncoder tests SetJSONEncoder and GetJSONEncoder methods.
+func TestSetGetJSONEncoder(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := NewResponse(w)
+
+	// Initially encoder should be nil
+	if r.GetJSONEncoder() != nil {
+		t.Error("Expected initial JSON encoder to be nil")
+	}
+
+	// Define a custom encoder
+	customEncoder := func(w io.Writer, v interface{}) error {
+		return json.NewEncoder(w).Encode(v)
+	}
+
+	// Set the encoder
+	r.SetJSONEncoder(customEncoder)
+
+	// Get the encoder and verify it's not nil
+	if r.GetJSONEncoder() == nil {
+		t.Error("Expected JSON encoder to be set, got nil")
+	}
+
+	// Verify encoder works
+	data := map[string]string{"test": "value"}
+	err := r.GetJSONEncoder()(w, data)
+	if err != nil {
+		t.Errorf("Encoder failed: %v", err)
 	}
 }
 
@@ -319,6 +367,27 @@ func TestJSON(t *testing.T) {
 	}
 }
 
+// TestJSON_Error tests JSON method with standard encoder error.
+func TestJSON_Error(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := NewResponse(w)
+
+	// Create data that can't be marshalled into JSON
+	data := map[string]interface{}{
+		"fn": func() {}, // functions can't be marshalled
+	}
+
+	err := r.JSON(data)
+	if err == nil {
+		t.Error("Expected JSON() to return error for unmarshallable data")
+	}
+
+	expectedError := "failed to encode JSON response:"
+	if !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Expected error to contain %q, got %q", expectedError, err.Error())
+	}
+}
+
 // TestJSON_CustomEncoder tests the JSON method with a custom encoder.
 func TestJSON_CustomEncoder(t *testing.T) {
 	w := httptest.NewRecorder()
@@ -357,6 +426,29 @@ func TestJSON_CustomEncoder(t *testing.T) {
 	}
 }
 
+// TestJSON_CustomEncoderError tests JSON method with custom encoder error.
+func TestJSON_CustomEncoderError(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	// Define an encoder that always returns error
+	errorEncoder := func(w io.Writer, v interface{}) error {
+		return errors.New("custom encoder error")
+	}
+
+	r := NewResponse(w, ApplyJSONEncoder(errorEncoder))
+
+	data := map[string]string{"test": "value"}
+	err := r.JSON(data)
+	if err == nil {
+		t.Error("Expected JSON() to return error from custom encoder")
+	}
+
+	expectedError := "custom JSON encoder failed: custom encoder error"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error %q, got %q", expectedError, err.Error())
+	}
+}
+
 // TestJSONP tests the JSONP method.
 func TestJSONP(t *testing.T) {
 	w := httptest.NewRecorder()
@@ -381,6 +473,27 @@ func TestJSONP(t *testing.T) {
 	res := w.Body.String()
 	if res != expected {
 		t.Errorf("JSONP() body = %v, want %v", res, expected)
+	}
+}
+
+// TestJSONP_Error tests JSONP method with standard encoder error.
+func TestJSONP_Error(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := NewResponse(w)
+
+	// Create data that can't be marshalled into JSON
+	data := map[string]interface{}{
+		"fn": func() {}, // functions can't be marshalled
+	}
+
+	err := r.JSONP(data, "callback")
+	if err == nil {
+		t.Error("Expected JSONP() to return error for unmarshallable data")
+	}
+
+	expectedError := "failed to encode JSONP data:"
+	if !strings.Contains(err.Error(), expectedError) {
+		t.Errorf("Expected error to contain %q, got %q", expectedError, err.Error())
 	}
 }
 
@@ -427,6 +540,50 @@ func TestJSONP_CustomEncoder(t *testing.T) {
 	resBody := w.Body.String()
 	if resBody != expectedBody {
 		t.Errorf("JSONP() body = %v, want %v", resBody, expectedBody)
+	}
+}
+
+// TestJSONP_CustomEncoderError tests JSONP method with custom encoder error.
+func TestJSONP_CustomEncoderError(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	// Define an encoder that always returns error
+	errorEncoder := func(w io.Writer, v interface{}) error {
+		return errors.New("custom encoder error")
+	}
+
+	r := NewResponse(w, ApplyJSONEncoder(errorEncoder))
+
+	data := map[string]string{"test": "value"}
+	err := r.JSONP(data, "callback")
+	if err == nil {
+		t.Error("Expected JSONP() to return error from custom encoder")
+	}
+
+	expectedError := "custom JSON encoder failed in JSONP: custom encoder error"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error %q, got %q", expectedError, err.Error())
+	}
+}
+
+// TestJSONP_WriteError tests JSONP method with write error.
+func TestJSONP_WriteError(t *testing.T) {
+	// Create a mock writer that returns error on write
+	errorWriter := &mockErrorWriter{
+		err: errors.New("write error"),
+	}
+
+	r := NewResponse(errorWriter)
+	data := map[string]string{"test": "value"}
+
+	err := r.JSONP(data, "callback")
+	if err == nil {
+		t.Error("Expected JSONP() to return error on write failure")
+	}
+
+	expectedError := "failed to write JSONP response: write error"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error %q, got %q", expectedError, err.Error())
 	}
 }
 
