@@ -48,6 +48,33 @@ func WithCookie(cookie *http.Cookie) Option {
 	}
 }
 
+// WithStreamJSON switches JSON (and the JSON body of JSONP) into streaming
+// mode: the payload is encoded directly into the http.ResponseWriter
+// instead of an intermediate buffer. This lowers memory use for very large
+// responses, but trades away the buffered-mode guarantee — an encoding
+// error may surface only after the status line and part of the body have
+// already been written. Use it when you knowingly accept that trade-off.
+func WithStreamJSON() Option {
+	return func(r *Response) *Response {
+		r.streamJSON = true
+		return r
+	}
+}
+
+// WithErrorCode overrides only the "code" field of the JSON error body
+// produced by Error, decoupling the application/business code from the HTTP
+// status. Without this option the body code mirrors the HTTP status passed
+// to Error.
+//
+//	resp.Error(w, 404, "User not found", resp.WithErrorCode(1042))
+//	// HTTP 404, body {"code":1042,"message":"User not found"}
+func WithErrorCode(code int) Option {
+	return func(r *Response) *Response {
+		r.errorCode = &code
+		return r
+	}
+}
+
 // WithStatusContinue sets the status code to 100.
 func WithStatusContinue() Option {
 	return WithStatus(StatusContinue)
@@ -408,11 +435,6 @@ func AddLocation(value string) Option {
 	return WithHeader(HeaderLocation, value)
 }
 
-// // AddRetryAfter sets the Retry-After header.
-// func AddRetryAfter(seconds int) Option {
-// 	return WithHeader(HeaderRetryAfter, strconv.Itoa(seconds))
-// }
-
 // AddRetryAfter sets the Retry-After header.
 func AddRetryAfter[T int | time.Time | time.Duration](value T) Option {
 	return func(r *Response) *Response {
@@ -635,7 +657,7 @@ func AddContentRange(start, end, total int) Option {
 	}
 }
 
-// AddAcceptRanges sets the Accept-Ranges header.
+// AddAccept sets the Accept header.
 func AddAccept(value ...string) Option {
 	return WithHeader(HeaderAccept, value...)
 }
@@ -674,7 +696,7 @@ func AddWarning(warnings ...WarningHeader) Option {
 				dateStr = warning.Date.Format(time.RFC1123)
 			}
 
-			value := fmt.Sprintf("%d", warning.Code)
+			value := strconv.Itoa(warning.Code)
 
 			if warning.Agent != "" {
 				value += " " + warning.Agent
@@ -864,15 +886,14 @@ func AsApplicationJavaScriptCharsetUTF8() Option {
 }
 
 // ApplyJSONEncoder sets the custom JSON encoder function.
-// This allows us to use a different JSON encoding library
-// or customize encoding.
+// This allows us to plug in a different JSON encoder or customize encoding.
 //
 // Example Usage:
 //
-//	import jsoniter "github.com/json-iterator/go"
-//
-//	customEncoder := func(w io.Writer, v interface{}) error {
-//	    return jsoniter.NewEncoder(w).Encode(v)
+//	customEncoder := func(w io.Writer, v any) error {
+//	    enc := json.NewEncoder(w)
+//	    enc.SetEscapeHTML(false)
+//	    return enc.Encode(v)
 //	}
 //
 //	response := resp.NewResponse(w, resp.ApplyJSONEncoder(customEncoder))

@@ -31,7 +31,7 @@ import (
 //
 //	import (
 //		"net/http"
-//		"github.com/goloop/resp"
+//		"github.com/goloop/resp/v2"
 //	)
 //
 //	type User struct {
@@ -75,42 +75,7 @@ import (
 //		}
 //	}
 func OnlyFields(data any, fields ...string) any {
-	rv := reflect.ValueOf(data)
-
-	switch rv.Kind() {
-	case reflect.Ptr:
-		rv = rv.Elem()
-		if rv.Kind() == reflect.Struct {
-			return onlyFields(rv.Interface(), fields...)
-		}
-	case reflect.Slice, reflect.Array:
-		length := rv.Len()
-		if length > 0 {
-			elemKind := rv.Index(0).Kind()
-			if elemKind == reflect.Ptr {
-				elemKind = rv.Index(0).Elem().Kind()
-			}
-			if elemKind == reflect.Struct {
-				result := make([]R, length)
-				for i := 0; i < length; i++ {
-					elem := rv.Index(i)
-					if elem.Kind() == reflect.Ptr {
-						elem = elem.Elem()
-					}
-					result[i] = onlyFields(elem.Interface(), fields...)
-				}
-				return result
-			}
-		}
-	case reflect.Struct:
-		return onlyFields(data, fields...)
-	case reflect.Map:
-		if rv.Type().Key().Kind() == reflect.String {
-			return onlyFieldsMap(data.(map[string]any), fields...)
-		}
-	}
-
-	return data
+	return filterFields(data, fields, true)
 }
 
 // ExcludeFields removes the specified fields from the provided data
@@ -141,7 +106,7 @@ func OnlyFields(data any, fields ...string) any {
 //
 //	import (
 //		"net/http"
-//		"github.com/goloop/resp"
+//		"github.com/goloop/resp/v2"
 //	)
 //
 //	type User struct {
@@ -185,13 +150,26 @@ func OnlyFields(data any, fields ...string) any {
 //		}
 //	}
 func ExcludeFields(data any, fields ...string) any {
-	rv := reflect.ValueOf(data)
+	return filterFields(data, fields, false)
+}
 
+// filterFields is the shared implementation behind OnlyFields and
+// ExcludeFields. The keep flag selects the mode: when true, only the named
+// fields are retained; when false, the named fields are dropped. The field
+// set is built once and reused across every element of a slice/array, so a
+// list of N structs costs O(N) work instead of rebuilding the set N times.
+func filterFields(data any, fields []string, keep bool) any {
+	set := make(map[string]struct{}, len(fields))
+	for _, field := range fields {
+		set[field] = struct{}{}
+	}
+
+	rv := reflect.ValueOf(data)
 	switch rv.Kind() {
 	case reflect.Ptr:
 		rv = rv.Elem()
 		if rv.Kind() == reflect.Struct {
-			return excludeFields(rv.Interface(), fields...)
+			return pickStruct(rv, set, keep)
 		}
 	case reflect.Slice, reflect.Array:
 		length := rv.Len()
@@ -202,43 +180,38 @@ func ExcludeFields(data any, fields ...string) any {
 			}
 			if elemKind == reflect.Struct {
 				result := make([]R, length)
-				for i := 0; i < length; i++ {
+				for i := range length {
 					elem := rv.Index(i)
 					if elem.Kind() == reflect.Ptr {
 						elem = elem.Elem()
 					}
-					result[i] = excludeFields(elem.Interface(), fields...)
+					result[i] = pickStruct(elem, set, keep)
 				}
 				return result
 			}
 		}
 	case reflect.Struct:
-		return excludeFields(data, fields...)
+		return pickStruct(rv, set, keep)
 	case reflect.Map:
 		if rv.Type().Key().Kind() == reflect.String {
-			return excludeFieldsMap(data.(map[string]any), fields...)
+			return pickMap(rv, set, keep)
 		}
 	}
 
 	return data
 }
 
-// onlyFields extracts only the specified fields from the provided
-// data and returns them as an `R` map.
-func onlyFields(data any, fields ...string) R {
+// pickStruct projects the exported fields of a struct value into an R map,
+// keeping or dropping the names present in set according to keep. The
+// membership test (`_, ok := set[name]; ok == keep`) yields the field for
+// the "only" mode when it is in the set and for the "exclude" mode when it
+// is not.
+func pickStruct(rv reflect.Value, set map[string]struct{}, keep bool) R {
 	result := make(R)
-
-	rv := reflect.ValueOf(data)
 	rt := rv.Type()
-
-	allowed := make(map[string]bool, len(fields))
-	for _, field := range fields {
-		allowed[field] = true
-	}
-
-	for i := 0; i < rv.NumField(); i++ {
+	for i := range rt.NumField() {
 		name := rt.Field(i).Name
-		if allowed[name] {
+		if _, ok := set[name]; ok == keep {
 			result[name] = rv.Field(i).Interface()
 		}
 	}
@@ -246,59 +219,16 @@ func onlyFields(data any, fields ...string) R {
 	return result
 }
 
-// onlyFieldsMap extracts only the specified fields from the provided
-// map and returns them as an `R` map.
-func onlyFieldsMap(data map[string]any, fields ...string) R {
-	result := make(R)
-	allowed := make(map[string]bool, len(fields))
-	for _, field := range fields {
-		allowed[field] = true
-	}
-
-	for key, value := range data {
-		if allowed[key] {
-			result[key] = value
-		}
-	}
-
-	return result
-}
-
-// excludeFields removes the specified fields from the provided data
-// and returns the remaining fields as an `R` map.
-func excludeFields(data any, fields ...string) R {
-	result := make(R)
-
-	rv := reflect.ValueOf(data)
-	rt := rv.Type()
-
-	excluded := make(map[string]bool, len(fields))
-	for _, field := range fields {
-		excluded[field] = true
-	}
-
-	for i := 0; i < rv.NumField(); i++ {
-		name := rt.Field(i).Name
-		if !excluded[name] {
-			result[name] = rv.Field(i).Interface()
-		}
-	}
-
-	return result
-}
-
-// excludeFieldsMap removes the specified fields from the provided
-// map and returns the remaining fields as an `R` map.
-func excludeFieldsMap(data map[string]any, fields ...string) R {
-	result := make(R)
-	excluded := make(map[string]bool, len(fields))
-	for _, field := range fields {
-		excluded[field] = true
-	}
-
-	for key, value := range data {
-		if !excluded[key] {
-			result[key] = value
+// pickMap projects a string-keyed map into an R map, keeping or dropping
+// the keys present in set according to keep. It uses reflection so it works
+// for any map[string]T, not only map[string]any.
+func pickMap(rv reflect.Value, set map[string]struct{}, keep bool) R {
+	result := make(R, rv.Len())
+	iter := rv.MapRange()
+	for iter.Next() {
+		key := iter.Key().String()
+		if _, ok := set[key]; ok == keep {
+			result[key] = iter.Value().Interface()
 		}
 	}
 

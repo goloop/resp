@@ -1,5 +1,12 @@
 package resp
 
+import "errors"
+
+// ErrInvalidJSONPCallback is returned by JSONP when the supplied callback
+// name fails validation. It can be matched with errors.Is to distinguish a
+// rejected (potentially malicious) callback from an encoding or write error.
+var ErrInvalidJSONPCallback = errors.New("invalid JSONP callback name")
+
 // ErrorResponse represents an error response.
 type ErrorResponse struct {
 	Code    int    `json:"code"`    // error code

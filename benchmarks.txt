@@ -1,18 +1,18 @@
 goos: linux
 goarch: arm64
-pkg: github.com/goloop/resp
-BenchmarkJSONSmall-6               	 3368511	       387.8 ns/op	     335 B/op	       2 allocs/op
-BenchmarkJSONMedium-6              	 1901976	       674.4 ns/op	     620 B/op	       2 allocs/op
-BenchmarkJSONLarge-6               	   57187	     18375 ns/op	   23525 B/op	       2 allocs/op
-BenchmarkJSONPSmall-6              	 2363169	       564.8 ns/op	     604 B/op	       6 allocs/op
-BenchmarkHTML-6                    	 5539548	       359.3 ns/op	     789 B/op	       2 allocs/op
-BenchmarkString-6                  	11819876	        88.43 ns/op	     170 B/op	       2 allocs/op
-BenchmarkError-6                   	 4847616	       231.1 ns/op	     166 B/op	       2 allocs/op
-BenchmarkStream-6                  	12309727	        82.14 ns/op	     206 B/op	       1 allocs/op
-BenchmarkRedirect-6                	11327214	       104.5 ns/op	      64 B/op	       3 allocs/op
-BenchmarkNoContent-6               	21731414	        54.24 ns/op	      48 B/op	       2 allocs/op
-BenchmarkJSONWithCustomEncoder-6   	 1772643	       700.7 ns/op	     661 B/op	       2 allocs/op
-BenchmarkResponseChaining-6        	 2161809	       514.7 ns/op	     426 B/op	       7 allocs/op
-BenchmarkServeFileAsDownload-6     	 6095840	       181.7 ns/op	     256 B/op	       3 allocs/op
+pkg: github.com/goloop/resp/v2
+BenchmarkJSONSmall-8               	 2383800	       531.6 ns/op	     280 B/op	       2 allocs/op
+BenchmarkJSONMedium-8              	 1000000	      1152 ns/op	     608 B/op	       2 allocs/op
+BenchmarkJSONLarge-8               	   41572	     68665 ns/op	   32359 B/op	       2 allocs/op
+BenchmarkJSONPSmall-8              	 1827565	       680.9 ns/op	     372 B/op	       4 allocs/op
+BenchmarkHTML-8                    	 5446101	      1248 ns/op	     639 B/op	       1 allocs/op
+BenchmarkString-8                  	 7752152	       130.1 ns/op	     186 B/op	       1 allocs/op
+BenchmarkError-8                   	 4737940	       354.2 ns/op	     185 B/op	       2 allocs/op
+BenchmarkStream-8                  	12930627	       239.6 ns/op	     214 B/op	       1 allocs/op
+BenchmarkRedirect-8                	11419272	       104.2 ns/op	      80 B/op	       3 allocs/op
+BenchmarkNoContent-8               	22821877	        48.30 ns/op	      64 B/op	       2 allocs/op
+BenchmarkJSONWithCustomEncoder-8   	  671696	      1781 ns/op	     871 B/op	       2 allocs/op
+BenchmarkResponseChaining-8        	 3198278	       453.1 ns/op	     379 B/op	       3 allocs/op
+BenchmarkServeFileAsDownload-8     	 3580976	       469.9 ns/op	     317 B/op	       6 allocs/op
 PASS
-ok  	github.com/goloop/resp	20.088s
+ok  	github.com/goloop/resp/v2	29.021s

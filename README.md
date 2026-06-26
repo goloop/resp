@@ -1,9 +1,21 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/goloop/resp)](https://goreportcard.com/report/github.com/goloop/resp) [![License](https://img.shields.io/badge/license-MIT-brightgreen)](https://github.com/goloop/resp/blob/master/LICENSE) [![License](https://img.shields.io/badge/godoc-YES-green)](https://godoc.org/github.com/goloop/resp) [![Stay with Ukraine](https://img.shields.io/static/v1?label=Stay%20with&message=Ukraine%20♥&color=ffD700&labelColor=0057B8&style=flat)](https://u24.gov.ua/)
+[![Go Report Card](https://goreportcard.com/badge/github.com/goloop/resp)](https://goreportcard.com/report/github.com/goloop/resp) [![License](https://img.shields.io/badge/license-MIT-brightgreen)](https://github.com/goloop/resp/blob/master/LICENSE) [![License](https://img.shields.io/badge/godoc-YES-green)](https://pkg.go.dev/github.com/goloop/resp/v2) [![Stay with Ukraine](https://img.shields.io/static/v1?label=Stay%20with&message=Ukraine%20♥&color=ffD700&labelColor=0057B8&style=flat)](https://u24.gov.ua/)
 
 
 # resp
 
-A lightweight Go package for crafting HTTP responses with ease. Built on top of Go's standard `net/http` package, `resp` simplifies common response patterns while maintaining flexibility and performance.
+A lightweight Go package for crafting HTTP responses with ease. Built on top of Go's standard `net/http` package, `resp` simplifies common response patterns while maintaining flexibility and performance. It has **no third-party dependencies**.
+
+## What's new in v2
+
+Version 2 is a focused correctness and modernization release. The module path is now `github.com/goloop/resp/v2`.
+
+- **Safe-by-default JSON.** `JSON`/`JSONP`/`XML` encode into a pooled buffer first, so a serialization error is returned **before** the status line is committed — the handler can still respond with a proper error. Opt into zero-copy streaming with `WithStreamJSON()` when memory matters more than this guarantee.
+- **Hardened JSONP.** The callback name is validated against a strict JavaScript-identifier whitelist; an unsafe name returns `ErrInvalidJSONPCallback` and writes nothing, closing the reflected-XSS vector.
+- **Clear `Error` semantics.** The first argument is the HTTP status, mirrored into the body `code` by default. Use `WithErrorCode(n)` to set a distinct business code in the body.
+- **Strict redirects.** `Redirect` honours only genuine redirect codes (300, 301, 302, 303, 307, 308); anything else falls back to 302.
+- **Safer downloads.** `ServeFileAsDownload` sets `Content-Length`, `X-Content-Type-Options: nosniff`, and an RFC 5987 `filename*` form for non-ASCII names.
+- **New helpers.** `XML`, `Blob`, `Created`, `Accepted`, plus `(*Response).Status()` and `(*Response).Header()` getters.
+- **Modern baseline.** `go 1.24`, `any` instead of `interface{}`, zero dependencies.
 
 ## Important Note
 
@@ -38,29 +50,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ## Features
 
-- 🚀 Quick and intuitive response methods (JSON, HTML, String, etc.)
+- 🚀 Quick and intuitive response methods (JSON, JSONP, XML, HTML, String, Blob, etc.)
+- 🛡️ Safe-by-default encoding: errors never leave a half-written success response
+- 🔒 Validated JSONP callbacks
 - 🛠️ Flexible header and status code management
 - 🍪 Simple cookie handling
 - 📁 File streaming and downloads
 - ⚙️ Custom JSON encoder support
 - 🔧 Chainable response options
+- 📦 Zero third-party dependencies
 
 ## Installation
 
 ```bash
-go get -u github.com/goloop/resp
+go get -u github.com/goloop/resp/v2
 ```
 
 ## Basic Usage
 
 ```go
-import "github.com/goloop/resp"
+import "github.com/goloop/resp/v2"
 
 // Simple JSON response.
 func HandleJSON(w http.ResponseWriter, r *http.Request) {
     data := resp.R{
         "message": "Hello, World!",
-        "status": "success",
+        "status":  "success",
     }
 
     if err := resp.JSON(w, data); err != nil {
@@ -76,9 +91,58 @@ func HandleHTML(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-// Error response.
+// Error response: HTTP 404 with body {"code":404,"message":"Resource not found"}.
 func HandleError(w http.ResponseWriter, r *http.Request) {
     resp.Error(w, http.StatusNotFound, "Resource not found")
+}
+```
+
+## Error Responses
+
+In v2 the first argument to `Error` is always the HTTP status code. It is written to the status line and mirrored into the JSON body's `code` field, so the two never disagree:
+
+```go
+// HTTP 404, body {"code":404,"message":"Not Found"}.
+resp.Error(w, http.StatusNotFound, "")
+
+// HTTP 404, body {"code":1042,"message":"User not found"}.
+resp.Error(w, http.StatusNotFound, "User not found", resp.WithErrorCode(1042))
+```
+
+The status argument takes precedence over a `WithStatus` option, and an out-of-range value falls back to `500 Internal Server Error`.
+
+## REST Helpers
+
+```go
+// 201 Created with a Location header and a JSON body.
+resp.Created(w, "/users/42", user)
+
+// 202 Accepted for asynchronous processing.
+resp.Accepted(w, resp.R{"job_id": jobID})
+
+// 204 No Content.
+resp.NoContent(w)
+```
+
+## Binary and XML Responses
+
+```go
+// Raw bytes with an explicit content type (Content-Length set automatically).
+resp.Blob(w, "application/pdf", pdfBytes)
+
+// XML serialization, mirroring JSON.
+resp.XML(w, note)
+```
+
+## JSONP
+
+The callback name is validated before anything is written:
+
+```go
+callback := r.URL.Query().Get("callback")
+if err := resp.JSONP(w, data, callback); err != nil {
+    // errors.Is(err, resp.ErrInvalidJSONPCallback) for a rejected name.
+    resp.Error(w, http.StatusBadRequest, "invalid callback")
 }
 ```
 
@@ -86,14 +150,14 @@ func HandleError(w http.ResponseWriter, r *http.Request) {
 
 ### Custom JSON Encoder
 
-You can use any JSON encoder that satisfies the `JSONEncodeFunc` interface:
+You can plug in any encoder that satisfies `JSONEncodeFunc` (`func(w io.Writer, v any) error`):
 
 ```go
-import jsoniter "github.com/json-iterator/go"
-
 func HandleCustomJSON(w http.ResponseWriter, r *http.Request) {
-    customEncoder := func(w io.Writer, v interface{}) error {
-        return jsoniter.NewEncoder(w).Encode(v)
+    customEncoder := func(w io.Writer, v any) error {
+        enc := json.NewEncoder(w)
+        enc.SetEscapeHTML(false)
+        return enc.Encode(v)
     }
 
     response := resp.NewResponse(w, resp.ApplyJSONEncoder(customEncoder))
@@ -105,17 +169,37 @@ func HandleCustomJSON(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### Streaming Large JSON
+
+By default `JSON` buffers the payload so an encode error can be reported before the status is committed. For very large responses where memory matters more than that guarantee, opt into direct streaming:
+
+```go
+resp.JSON(w, largeData, resp.WithStreamJSON())
+```
+
+### Field Projection
+
+```go
+// Keep only selected fields (e.g. hide a password before serialization).
+data := resp.OnlyFields(user, "ID", "Email")
+
+// Or drop selected fields.
+data := resp.ExcludeFields(user, "Password")
+
+resp.JSON(w, data)
+```
+
 ### File Downloads
 
 ```go
 func HandleFileDownload(w http.ResponseWriter, r *http.Request) {
-    // Serve static file.
+    // Serve a static file.
     if err := resp.ServeFile(w, r, "path/to/file.pdf",
         resp.AddContentDisposition("attachment", "document.pdf")); err != nil {
         log.Printf("File serving failed: %v", err)
     }
 
-    // Serve dynamic content as file.
+    // Serve in-memory content as a download.
     data := []byte("Dynamic content")
     if err := resp.ServeFileAsDownload(w, "file.txt", data); err != nil {
         log.Printf("Download failed: %v", err)
@@ -140,10 +224,9 @@ func HandleChainedResponse(w http.ResponseWriter, r *http.Request) {
 ### Header Management
 
 ```go
-func HandleHeaders(w http.ResponseWriter, r *http.Request) {
+func HandleHeaders(w http.ResponseWriter, r *http.Request, data any) {
     opts := []resp.Option{
         resp.WithHeader("X-Custom-Header", "value"),
-        resp.AddContentType("application/json"),
         resp.AddETag("\"123456\""),
         resp.AsApplicationJSON(),
     }
@@ -156,21 +239,24 @@ func HandleHeaders(w http.ResponseWriter, r *http.Request) {
 
 ## Default Behaviors
 
-- If no status code is set, `200 OK` is used
+- If no status code is set, `200 OK` is used.
 - Content-Type headers are automatically set based on the response type:
   - JSON: `application/json; charset=utf-8`
+  - JSONP: `application/javascript; charset=utf-8`
+  - XML: `application/xml; charset=utf-8`
   - HTML: `text/html; charset=utf-8`
-  - String: `text/plain; charset=utf-8`
+  - String: `text/plain`
 
 ## Error Handling
 
 Always check for errors when sending responses:
 
 ```go
-func Handler(w http.ResponseWriter, r *http.Request) {
+func Handler(w http.ResponseWriter, r *http.Request, data any) {
     if err := resp.JSON(w, data); err != nil {
         log.Printf("Failed to send response: %v", err)
-        // Optionally send a fallback error response.
+        // Safe in buffered (default) mode: nothing has been written yet,
+        // so a fallback error response still works.
         resp.Error(w, http.StatusInternalServerError, "Internal server error")
         return
     }
@@ -179,95 +265,45 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 ## Benchmarks
 
-Here are the benchmark results showing the performance characteristics of different response types:
+Benchmark results are machine-dependent and provided for illustration only:
 
 ```txt
 goos: linux
 goarch: arm64
-pkg: github.com/goloop/resp
-BenchmarkJSONSmall-6               	 3368511	       387.8 ns/op	     335 B/op	       2 allocs/op
-BenchmarkJSONMedium-6              	 1901976	       674.4 ns/op	     620 B/op	       2 allocs/op
-BenchmarkJSONLarge-6               	   57187	     18375 ns/op	   23525 B/op	       2 allocs/op
-BenchmarkJSONPSmall-6              	 2363169	       564.8 ns/op	     604 B/op	       6 allocs/op
-BenchmarkHTML-6                    	 5539548	       359.3 ns/op	     789 B/op	       2 allocs/op
-BenchmarkString-6                  	11819876	        88.43 ns/op	     170 B/op	       2 allocs/op
-BenchmarkError-6                   	 4847616	       231.1 ns/op	     166 B/op	       2 allocs/op
-BenchmarkStream-6                  	12309727	        82.14 ns/op	     206 B/op	       1 allocs/op
-BenchmarkRedirect-6                	11327214	       104.5 ns/op	      64 B/op	       3 allocs/op
-BenchmarkNoContent-6               	21731414	        54.24 ns/op	      48 B/op	       2 allocs/op
-BenchmarkJSONWithCustomEncoder-6   	 1772643	       700.7 ns/op	     661 B/op	       2 allocs/op
-BenchmarkResponseChaining-6        	 2161809	       514.7 ns/op	     426 B/op	       7 allocs/op
-BenchmarkServeFileAsDownload-6     	 6095840	       181.7 ns/op	     256 B/op	       3 allocs/op
+pkg: github.com/goloop/resp/v2
+BenchmarkJSONSmall-8               	 2383800	       531.6 ns/op	     280 B/op	       2 allocs/op
+BenchmarkJSONMedium-8              	 1000000	      1152 ns/op	     608 B/op	       2 allocs/op
+BenchmarkJSONLarge-8               	   41572	     68665 ns/op	   32359 B/op	       2 allocs/op
+BenchmarkJSONPSmall-8              	 1827565	       680.9 ns/op	     372 B/op	       4 allocs/op
+BenchmarkHTML-8                    	 5446101	      1248 ns/op	     639 B/op	       1 allocs/op
+BenchmarkString-8                  	 7752152	       130.1 ns/op	     186 B/op	       1 allocs/op
+BenchmarkError-8                   	 4737940	       354.2 ns/op	     185 B/op	       2 allocs/op
+BenchmarkStream-8                  	12930627	       239.6 ns/op	     214 B/op	       1 allocs/op
+BenchmarkRedirect-8                	11419272	       104.2 ns/op	      80 B/op	       3 allocs/op
+BenchmarkNoContent-8               	22821877	        48.30 ns/op	      64 B/op	       2 allocs/op
+BenchmarkJSONWithCustomEncoder-8   	  671696	      1781 ns/op	     871 B/op	       2 allocs/op
+BenchmarkResponseChaining-8        	 3198278	       453.1 ns/op	     379 B/op	       3 allocs/op
+BenchmarkServeFileAsDownload-8     	 3580976	       469.9 ns/op	     317 B/op	       6 allocs/op
 PASS
-ok  	github.com/goloop/resp	20.088s
-
+ok  	github.com/goloop/resp/v2	29.021s
 ```
 
-### Performance Insights
-
-1. **Small Responses**: Basic operations like `String`, `NoContent`, and `Redirect` are very efficient, with minimal allocations and sub-microsecond latencies.
-
-2. **JSON Processing**:
-   - Small payloads (335 B) process in ~388ns
-   - Medium payloads (620 B) process in ~674ns
-   - Large payloads (23.5 KB) take significantly longer at ~18.4μs
-
-3. **Memory Allocations**:
-   - Most operations require only 2 allocations
-   - Response chaining requires more allocations (7) due to method chaining
-   - JSONP requires 6 allocations due to additional string processing
-
-### Optimizing Large Payloads
-
-For applications dealing with large JSON payloads, the package supports custom encoders. Here's how to use alternative JSON encoders for better performance:
-
-```go
-import jsoniter "github.com/json-iterator/go"
-
-// Using json-iterator for faster JSON encoding.
-customEncoder := func(w io.Writer, v interface{}) error {
-    return jsoniter.NewEncoder(w).Encode(v)
-}
-
-// Apply custom encoder.
-resp.JSON(w, largeData, resp.ApplyJSONEncoder(customEncoder))
-```
-
-Popular JSON encoding alternatives:
-- [json-iterator/go](https://github.com/json-iterator/go): Claims 100% compatibility with standard lib
-- [go-json](https://github.com/goccy/go-json): High performance with code generation
-- [sonic](https://github.com/bytedance/sonic): High-performance JSON encoder/decoder
-
-### Compression Options
-
-For large responses, consider enabling compression:
-
-```go
-func Handler(w http.ResponseWriter, r *http.Request) {
-    // Enable gzip compression.
-    w.Header().Set("Content-Encoding", "gzip")
-    gz := gzip.NewWriter(w)
-    defer gz.Close()
-
-    resp.JSON(gz, largeData, resp.AsApplicationJSON())
-}
-```
+A pooled buffer keeps the default (safe) JSON path at the same 2 allocations per operation as direct streaming.
 
 ### Best Practices for Performance
 
-1. Use appropriate response types for your data:
-   - `String()` for simple text responses
-   - `Stream()` for large files or real-time data
-   - `JSON()` with custom encoders for large JSON payloads
+1. Use the appropriate response type for your data:
+   - `String()` for simple text responses.
+   - `Stream()` for large files or real-time data.
+   - `JSON()` with `WithStreamJSON()` or a custom encoder for very large payloads.
 
 2. Consider response size:
-   - Enable compression for large responses
-   - Use pagination for large datasets
-   - Consider streaming for very large data
+   - Enable compression for large responses.
+   - Use pagination for large datasets.
+   - Consider streaming for very large data.
 
 3. Memory efficiency:
-   - Use `Stream()` for large files instead of loading them into memory
-   - Consider using response pooling for high-throughput scenarios
+   - Use `Stream()` for large files instead of loading them into memory.
 
 ## Contributing
 

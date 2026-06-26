@@ -1,7 +1,3 @@
-module github.com/goloop/resp
+module github.com/goloop/resp/v2
 
-go 1.20
-
-require github.com/goloop/g v1.12.1
-
-require github.com/goloop/trit v1.7.1 // indirect
+go 1.24

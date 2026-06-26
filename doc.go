@@ -45,13 +45,13 @@
 //    }
 //
 // 2. Custom JSON Encoding:
-//    Use custom JSON encoders for specific needs:
-//
-//    import jsoniter "github.com/json-iterator/go"
+//    Plug in any encoder that satisfies JSONEncodeFunc for specific needs:
 //
 //    func HandleCustomJSON(w http.ResponseWriter, r *http.Request) {
-//        encoder := func(w io.Writer, v interface{}) error {
-//            return jsoniter.NewEncoder(w).Encode(v)
+//        encoder := func(w io.Writer, v any) error {
+//            enc := json.NewEncoder(w)
+//            enc.SetEscapeHTML(false)
+//            return enc.Encode(v)
 //        }
 //        resp := resp.NewResponse(w, resp.ApplyJSONEncoder(encoder))
 //        if err := resp.JSON(data); err != nil {
@@ -148,6 +148,6 @@
 //   - Follow standard HTTP status code conventions
 //
 // For more examples and detailed documentation, visit:
-// https://pkg.go.dev/github.com/goloop/resp
+// https://pkg.go.dev/github.com/goloop/resp/v2
 
 package resp

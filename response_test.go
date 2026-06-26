@@ -11,8 +11,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/goloop/g"
 )
 
 // Test data structures.
@@ -82,7 +80,7 @@ func TestSetGetJSONEncoder(t *testing.T) {
 	}
 
 	// Define a custom encoder
-	customEncoder := func(w io.Writer, v interface{}) error {
+	customEncoder := func(w io.Writer, v any) error {
 		return json.NewEncoder(w).Encode(v)
 	}
 
@@ -362,7 +360,7 @@ func TestJSON(t *testing.T) {
 	// Check the response body.
 	expectedBody, _ := json.Marshal(data)
 	expected := string(expectedBody)
-	res := g.Trim(w.Body.String())
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("JSON() body = %v, want %v", res, expected)
 	}
@@ -374,7 +372,7 @@ func TestJSON_Error(t *testing.T) {
 	r := NewResponse(w)
 
 	// Create data that can't be marshalled into JSON
-	data := map[string]interface{}{
+	data := map[string]any{
 		"fn": func() {}, // functions can't be marshalled
 	}
 
@@ -394,7 +392,7 @@ func TestJSON_CustomEncoder(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Define a custom encoder function that pretty-prints the JSON.
-	customEncoder := func(w io.Writer, v interface{}) error {
+	customEncoder := func(w io.Writer, v any) error {
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "    ") // Use indentation to modify output
 		return encoder.Encode(v)
@@ -432,7 +430,7 @@ func TestJSON_CustomEncoderError(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Define an encoder that always returns error
-	errorEncoder := func(w io.Writer, v interface{}) error {
+	errorEncoder := func(w io.Writer, v any) error {
 		return errors.New("custom encoder error")
 	}
 
@@ -483,7 +481,7 @@ func TestJSONP_Error(t *testing.T) {
 	r := NewResponse(w)
 
 	// Create data that can't be marshalled into JSON
-	data := map[string]interface{}{
+	data := map[string]any{
 		"fn": func() {}, // functions can't be marshalled
 	}
 
@@ -492,7 +490,7 @@ func TestJSONP_Error(t *testing.T) {
 		t.Error("Expected JSONP() to return error for unmarshallable data")
 	}
 
-	expectedError := "failed to encode JSONP data:"
+	expectedError := "failed to encode JSON response:"
 	if !strings.Contains(err.Error(), expectedError) {
 		t.Errorf("Expected error to contain %q, got %q", expectedError, err.Error())
 	}
@@ -503,7 +501,7 @@ func TestJSONP_CustomEncoder(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Define a custom encoder function that pretty-prints the JSON.
-	customEncoder := func(w io.Writer, v interface{}) error {
+	customEncoder := func(w io.Writer, v any) error {
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "    ") // Use indentation to modify output
 		return encoder.Encode(v)
@@ -549,7 +547,7 @@ func TestJSONP_CustomEncoderError(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Define an encoder that always returns error
-	errorEncoder := func(w io.Writer, v interface{}) error {
+	errorEncoder := func(w io.Writer, v any) error {
 		return errors.New("custom encoder error")
 	}
 
@@ -561,7 +559,7 @@ func TestJSONP_CustomEncoderError(t *testing.T) {
 		t.Error("Expected JSONP() to return error from custom encoder")
 	}
 
-	expectedError := "custom JSON encoder failed in JSONP: custom encoder error"
+	expectedError := "custom JSON encoder failed: custom encoder error"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error %q, got %q", expectedError, err.Error())
 	}
@@ -607,26 +605,25 @@ func TestString(t *testing.T) {
 	}
 }
 
-// TestError tests the Error method.
+// TestError tests the Error method. The status argument is authoritative:
+// it sets the HTTP status and is mirrored into the body code, overriding any
+// WithStatus option supplied earlier.
 func TestError(t *testing.T) {
 	w := httptest.NewRecorder()
-	r := NewResponse(w, WithStatus(StatusBadRequest))
+	r := NewResponse(w, WithStatus(StatusOK)) // must be overridden by arg
 
 	errMessage := "This is an error"
-	r.Error(7, errMessage)
+	r.Error(StatusBadRequest, errMessage)
 
-	// Check that the status code is set to StatusInternalServerError
-	// and the Content-Type header is set to MIMEApplicationJSONCharsetUTF8
-	// and the response body contains the error message.
 	if w.Code != StatusBadRequest {
 		t.Errorf("Error() status code = %v, want %v",
 			w.Code, StatusBadRequest)
 	}
 
-	// Check that the Content-Type header is set correctly.
-	if !strings.Contains(w.Body.String(), errMessage) {
-		t.Errorf("Error() body does not contain error message %v, got %v",
-			errMessage, w.Body.String())
+	// Body code mirrors the HTTP status by default.
+	expected := `{"code":400,"message":"This is an error"}`
+	if got := strings.TrimSpace(w.Body.String()); got != expected {
+		t.Errorf("Error() body = %v, want %v", got, expected)
 	}
 }
 
@@ -720,9 +717,19 @@ func TestServeFileAsDownload(t *testing.T) {
 	}
 
 	cd := resp.Header.Get("Content-Disposition")
-	if got, want := cd, `attachment; filename="download.txt"`; got != want {
+	want := `attachment; filename="download.txt"; filename*=UTF-8''download.txt`
+	if cd != want {
 		t.Errorf("ServeFileAsDownload() Content-Disposition = %q, want %q",
-			got, want)
+			cd, want)
+	}
+
+	// Content-Length and the anti-sniffing header must be present.
+	if got := resp.Header.Get("Content-Length"); got != "16" {
+		t.Errorf("ServeFileAsDownload() Content-Length = %q, want %q", got, "16")
+	}
+	if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("ServeFileAsDownload() X-Content-Type-Options = %q, want %q",
+			got, "nosniff")
 	}
 }
 

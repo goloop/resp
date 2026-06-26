@@ -5,10 +5,10 @@ import (
 	"net/http"
 )
 
-// R is a type alias for a map[string]interface{}. It is designed to simplify
+// R is a type alias for a map[string]any. It is designed to simplify
 // the creation and manipulation of JSON objects in Go, making it easier to
 // work with dynamic data structures commonly used in web applications and APIs.
-// The use of `interface{}` as the map value allows storing any Go value,
+// The use of `any` as the map value allows storing any Go value,
 // offering the flexibility needed for JSON serialization.
 //
 // The alias `R` stands for "Response", emphasizing its utility in preparing
@@ -26,7 +26,7 @@ import (
 //	import (
 //		"net/http"
 //		"time"
-//		"github.com/goloop/resp"
+//		"github.com/goloop/resp/v2"
 //	)
 //
 //	func Handler(w http.ResponseWriter, r *http.Request) {
@@ -167,46 +167,52 @@ func String(w http.ResponseWriter, data string, opts ...Option) error {
 	return response.String(data)
 }
 
-// Error sends an error response with a specified HTTP status code and
-// error message.
+// Error sends a JSON error response.
 //
-// This function is designed to facilitate sending error responses with
-// meaningful status codes and messages. It allows for flexible error
-// reporting by accepting an optional message parameter, making it suitable
-// for endpoints that need to provide more context about an error.
-// The Content-Type of the response is set to "text/plain" by default,
-// but this can be adjusted using options.
+// The status argument is the HTTP status code: it is written to the status
+// line and, by default, mirrored into the JSON body's "code" field, so a
+// single call keeps the two consistent. The status argument always wins over
+// a WithStatus option; an out-of-range value falls back to
+// StatusInternalServerError. When message is empty, the canonical text for
+// the status code is used.
+//
+// To return a distinct application/business code in the body while keeping
+// the HTTP status, add WithErrorCode.
 //
 // Parameters:
 //   - w: The http.ResponseWriter to which the error response will be written.
-//   - code: Custom error code.
-//   - message: The error message to be sent in the response body. This can
-//     provide additional context about the error. If no message is provided,
-//     a default message based on the status code will be used.
-//   - opts...: Optional configurations applied to the response. These can be
-//     used to set custom headers, status codes, or other response settings.
+//   - status: The HTTP status code (100-599). Also used as the body code
+//     unless overridden with WithErrorCode.
+//   - message: The error message for the response body. If empty, the
+//     canonical message for the status code is used.
+//   - opts...: Optional configurations applied to the response.
 //
 // Returns:
 // - An error if writing the response fails. Otherwise, nil.
 //
 // Example usage:
 //
-//	 func Handler(w http.ResponseWriter, r *http.Request) {
-//	     // If message is not set, it will be generated automatically
-//	     // from the error status.
-//		 err := resp.Error(w, 7, "Page Not Found", resp.WithStatusNotFound())
-//	     if err != nil {
-//	         // Handle error...
-//	     }
-//	 }
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    // HTTP 404, body {"code":404,"message":"Not Found"}.
+//	    if err := resp.Error(w, http.StatusNotFound, ""); err != nil {
+//	        // Handle error...
+//	    }
+//
+//	    // HTTP 404, body {"code":1042,"message":"User not found"}.
+//	    err := resp.Error(w, http.StatusNotFound, "User not found",
+//	        resp.WithErrorCode(1042))
+//	    if err != nil {
+//	        // Handle error...
+//	    }
+//	}
 func Error(
 	w http.ResponseWriter,
-	code int,
+	status int,
 	message string,
 	opts ...Option,
 ) error {
 	response := NewResponse(w, opts...)
-	return response.Error(code, message)
+	return response.Error(status, message)
 }
 
 // Stream sends a stream response to the client.
@@ -463,4 +469,129 @@ func NoContent(w http.ResponseWriter, opts ...Option) error {
 //	}
 func HTML(w http.ResponseWriter, data string, opts ...Option) error {
 	return NewResponse(w, opts...).HTML(data)
+}
+
+// XML sends an XML response to the client.
+//
+// It mirrors JSON for XML payloads: the Content-Type defaults to
+// "application/xml; charset=utf-8" and the data is encoded with
+// encoding/xml. Like JSON, encoding happens into a buffer first, so a
+// marshalling error is returned before the status line is committed.
+//
+// Parameters:
+//   - w: The http.ResponseWriter that the XML response will be written to.
+//   - data: The data to be encoded as XML (typically a struct with xml tags).
+//   - opts...: Optional configurations applied to the response.
+//
+// Returns:
+//   - An error if encoding the XML fails. Otherwise, nil.
+//
+// Example usage:
+//
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    type Note struct {
+//	        XMLName xml.Name `xml:"note"`
+//	        To      string   `xml:"to"`
+//	    }
+//	    if err := resp.XML(w, Note{To: "World"}); err != nil {
+//	        // Handle error...
+//	    }
+//	}
+func XML(w http.ResponseWriter, data any, opts ...Option) error {
+	return NewResponse(w, opts...).XML(data)
+}
+
+// Blob sends raw bytes with an explicit content type to the client.
+//
+// It is the in-memory counterpart to ServeFile for arbitrary binary content
+// (PDFs, images, generated documents) that should be displayed rather than
+// downloaded. Content-Length is set automatically; if contentType is empty,
+// "application/octet-stream" is used.
+//
+// Parameters:
+//   - w: The http.ResponseWriter to which the bytes will be written.
+//   - contentType: The MIME type for the data (e.g. resp.MIMEApplicationPDF).
+//     If empty, application/octet-stream is used.
+//   - data: The raw bytes to send as the response body.
+//   - opts...: Optional configurations applied to the response.
+//
+// Returns:
+//   - An error if writing the response fails. Otherwise, nil.
+//
+// Example usage:
+//
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    pdf := renderInvoice()
+//	    if err := resp.Blob(w, "application/pdf", pdf); err != nil {
+//	        // Handle error...
+//	    }
+//	}
+func Blob(
+	w http.ResponseWriter,
+	contentType string,
+	data []byte,
+	opts ...Option,
+) error {
+	return NewResponse(w, opts...).Blob(contentType, data)
+}
+
+// Created sends a 201 Created response with an optional Location header and
+// an optional JSON body.
+//
+// This is the idiomatic helper for REST endpoints that create a resource:
+// it sets the status to 201, points Location at the new resource and encodes
+// the representation as JSON. A nil body sends only the status and headers.
+//
+// Parameters:
+//   - w: The http.ResponseWriter to which the response will be written.
+//   - location: The URL of the newly created resource (Location header).
+//     Omitted from the header when empty.
+//   - data: The created resource to encode as JSON, or nil for no body.
+//   - opts...: Optional configurations applied to the response.
+//
+// Returns:
+//   - An error if encoding or writing the response fails. Otherwise, nil.
+//
+// Example usage:
+//
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    user := createUser(r)
+//	    if err := resp.Created(w, "/users/"+user.ID, user); err != nil {
+//	        // Handle error...
+//	    }
+//	}
+func Created(
+	w http.ResponseWriter,
+	location string,
+	data any,
+	opts ...Option,
+) error {
+	return NewResponse(w, opts...).Created(location, data)
+}
+
+// Accepted sends a 202 Accepted response with an optional JSON body.
+//
+// It is the idiomatic helper for endpoints that accept a request for
+// asynchronous processing: it sets the status to 202 and optionally encodes
+// a tracking representation (e.g. a job handle) as JSON. A nil body sends
+// only the status.
+//
+// Parameters:
+//   - w: The http.ResponseWriter to which the response will be written.
+//   - data: The payload to encode as JSON (e.g. a job descriptor), or nil.
+//   - opts...: Optional configurations applied to the response.
+//
+// Returns:
+//   - An error if encoding or writing the response fails. Otherwise, nil.
+//
+// Example usage:
+//
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    job := enqueue(r)
+//	    if err := resp.Accepted(w, resp.R{"job_id": job.ID}); err != nil {
+//	        // Handle error...
+//	    }
+//	}
+func Accepted(w http.ResponseWriter, data any, opts ...Option) error {
+	return NewResponse(w, opts...).Accepted(data)
 }

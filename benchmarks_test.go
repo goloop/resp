@@ -169,7 +169,7 @@ func BenchmarkNoContent(b *testing.B) {
 // BenchmarkJSONWithCustomEncoder benchmarks JSON response with custom encoder
 func BenchmarkJSONWithCustomEncoder(b *testing.B) {
 	w := helperNewRecorder()
-	customEncoder := func(w io.Writer, v interface{}) error {
+	customEncoder := func(w io.Writer, v any) error {
 		return json.NewEncoder(w).Encode(v)
 	}
 

@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/goloop/g"
 )
 
 // TestFuncJSON tests the JSON function.
@@ -32,7 +30,7 @@ func TestFuncJSON(t *testing.T) {
 	// Check the response body.
 	expectedBody, _ := json.Marshal(data)
 	expected := string(expectedBody)
-	res := g.Trim(w.Body.String())
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("JSON() body = %v, want %v", res, expected)
 	}
@@ -59,7 +57,7 @@ func TestFuncJSONP(t *testing.T) {
 	// Check the response body.
 	expectedBody, _ := json.Marshal(data)
 	expected := callback + "(" + string(expectedBody) + ");"
-	res := g.Trim(w.Body.String())
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("JSONP() body = %v, want %v", res, expected)
 	}
@@ -84,108 +82,97 @@ func TestFuncString(t *testing.T) {
 
 	// Check the response body.
 	expected := data
-	res := g.Trim(w.Body.String())
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("String() body = %v, want %v", res, expected)
 	}
 }
 
-// TestFuncError tests the Error function.
+// TestFuncError verifies the v2 contract: the first argument is the HTTP
+// status, written to both the status line and the body "code" field.
 func TestFuncError(t *testing.T) {
 	w := httptest.NewRecorder()
-	status := 400
-	message := "error message"
 
-	err := Error(w, 7, message, WithStatus(status))
-
+	err := Error(w, http.StatusBadRequest, "error message")
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
 	}
 
-	// Check that the Content-Type header is set correctly.
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Error() status code = %v, want %v",
+			w.Code, http.StatusBadRequest)
+	}
+
 	got := w.Header().Get("Content-Type")
 	if want := MIMEApplicationJSONCharsetUTF8; got != want {
 		t.Errorf("Error() Content-Type = %v, want %v", got, want)
 	}
 
-	// Check the response body.
-	expected := `{"code":7,"message":"error message"}`
-	res := g.Trim(w.Body.String())
+	expected := `{"code":400,"message":"error message"}`
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
 	}
 }
 
-// TestFuncError_StatusOnly tests the Error function.
-func TestFuncError_StatusOnly(t *testing.T) {
+// TestFuncError_WithErrorCode verifies WithErrorCode overrides only the body
+// "code" while the HTTP status stays the first argument.
+func TestFuncError_WithErrorCode(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	// Get first status only...
-	err := Error(w, 7, "Not Found", WithStatusBadRequest())
-
+	err := Error(w, http.StatusNotFound, "User not found", WithErrorCode(1042))
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
 	}
 
-	// Check that the Content-Type header is set correctly.
-	got := w.Header().Get("Content-Type")
-	if want := MIMEApplicationJSONCharsetUTF8; got != want {
-		t.Errorf("Error() Content-Type = %v, want %v", got, want)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Error() status code = %v, want %v",
+			w.Code, http.StatusNotFound)
 	}
 
-	// Check the response body.
-	expected := `{"code":7,"message":"Not Found"}`
-	res := g.Trim(w.Body.String())
+	expected := `{"code":1042,"message":"User not found"}`
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
 	}
 }
 
-// TestFuncError_Empty tests the Error function.
-func TestFuncError_Empty(t *testing.T) {
+// TestFuncError_DefaultMessage verifies that an empty message falls back to
+// the canonical text for the status code.
+func TestFuncError_DefaultMessage(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	// Get first status only...
-	err := Error(w, 7, "Internal Server Error")
-
+	err := Error(w, http.StatusNotFound, "")
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
 	}
 
-	// Check that the Content-Type header is set correctly.
-	got := w.Header().Get("Content-Type")
-	if want := MIMEApplicationJSONCharsetUTF8; got != want {
-		t.Errorf("Error() Content-Type = %v, want %v", got, want)
-	}
-
-	// Check the response body.
-	expected := `{"code":7,"message":"Internal Server Error"}`
-	res := g.Trim(w.Body.String())
+	expected := `{"code":404,"message":"Not Found"}`
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
 	}
 }
 
-// TestFuncError_DoubleStatus tests the Error function.
-func TestFuncError_DoubleStatus(t *testing.T) {
+// TestFuncError_StatusArgWins verifies that the status argument takes
+// precedence over a WithStatus option, removing the legacy status/body
+// mismatch.
+func TestFuncError_StatusArgWins(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	// Take first status only...
-	err := Error(w, 7, "Bad Request", WithStatusNotFound())
-
+	// WithStatus(200) must be overridden by the 404 argument.
+	err := Error(w, http.StatusNotFound, "Bad Request", WithStatus(http.StatusOK))
 	if err != nil {
 		t.Errorf("Error() returned an error: %v", err)
 	}
 
-	// Check that the Content-Type header is set correctly.
-	got := w.Header().Get("Content-Type")
-	if want := MIMEApplicationJSONCharsetUTF8; got != want {
-		t.Errorf("Error() Content-Type = %v, want %v", got, want)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Error() status code = %v, want %v",
+			w.Code, http.StatusNotFound)
 	}
 
-	// Check the response body.
-	expected := `{"code":7,"message":"Bad Request"}`
-	res := g.Trim(w.Body.String())
+	expected := `{"code":404,"message":"Bad Request"}`
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("Error() body = %v, want %v", res, expected)
 	}
@@ -210,7 +197,7 @@ func TestFuncStream(t *testing.T) {
 
 	// Check the response body.
 	expected := data
-	res := g.Trim(w.Body.String())
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("Stream() body = %v, want %v", res, expected)
 	}
@@ -284,9 +271,10 @@ func TestFuncServeFileAsDownload(t *testing.T) {
 	}
 
 	cd := resp.Header.Get("Content-Disposition")
-	if got, want := cd, `attachment; filename="download.txt"`; got != want {
+	want := `attachment; filename="download.txt"; filename*=UTF-8''download.txt`
+	if cd != want {
 		t.Errorf("ServeFileAsDownload() Content-Disposition = %q, want %q",
-			got, want)
+			cd, want)
 	}
 }
 
@@ -350,7 +338,7 @@ func TestFuncHTML(t *testing.T) {
 
 	// Check the response body.
 	expected := data
-	res := g.Trim(w.Body.String())
+	res := strings.TrimSpace(w.Body.String())
 	if res != expected {
 		t.Errorf("HTML() body = %v, want %v", res, expected)
 	}
