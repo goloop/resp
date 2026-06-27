@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -404,6 +405,79 @@ func TestServeFileAsDownload_HeadersAndUnicode(t *testing.T) {
 				t.Errorf("X-Content-Type-Options = %q, want nosniff", got)
 			}
 		})
+	}
+}
+
+// -----------------------------------------------------------------------
+// JSONIndent — pretty output, buffered safety, custom encoder ignored.
+// -----------------------------------------------------------------------
+
+func TestJSONIndent(t *testing.T) {
+	w := httptest.NewRecorder()
+	if err := JSONIndent(w, R{"a": 1}, "", "  "); err != nil {
+		t.Fatalf("JSONIndent() error: %v", err)
+	}
+	want := "{\n  \"a\": 1\n}\n"
+	if got := w.Body.String(); got != want {
+		t.Errorf("JSONIndent() body = %q, want %q", got, want)
+	}
+	if ct := w.Header().Get("Content-Type"); ct != MIMEApplicationJSONCharsetUTF8 {
+		t.Errorf("JSONIndent() Content-Type = %q", ct)
+	}
+}
+
+func TestJSONIndent_IgnoresCustomEncoder(t *testing.T) {
+	// A custom encoder must NOT hijack JSONIndent — indentation is the point.
+	enc := func(w io.Writer, v any) error { return errFromEncoder }
+	w := httptest.NewRecorder()
+	r := NewResponse(w, ApplyJSONEncoder(enc))
+	if err := r.JSONIndent(R{"a": 1}, "", "\t"); err != nil {
+		t.Fatalf("JSONIndent() unexpectedly used the custom encoder: %v", err)
+	}
+	if !strings.Contains(w.Body.String(), "\t\"a\": 1") {
+		t.Errorf("JSONIndent() body not tab-indented: %q", w.Body.String())
+	}
+}
+
+func TestJSONIndent_EncodeError_DoesNotCommitStatus(t *testing.T) {
+	w := newTrackingWriter()
+	r := NewResponse(w)
+	if err := r.JSONIndent(map[string]any{"bad": make(chan int)}, "", "  "); err == nil {
+		t.Fatal("JSONIndent() expected encode error, got nil")
+	}
+	if w.wroteHeader || w.body.Len() != 0 {
+		t.Error("JSONIndent(): committed output despite encode error")
+	}
+}
+
+var errFromEncoder = errors.New("custom encoder used")
+
+// -----------------------------------------------------------------------
+// RFC 5987 ext-value encoding for Content-Disposition filename*.
+// -----------------------------------------------------------------------
+
+func TestRFC5987Encode(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		// attr-chars pass through unencoded.
+		{"report.pdf", "report.pdf"},
+		{"a-b_c.d~e", "a-b_c.d~e"},
+		{"!#$&+-.^_`|~", "!#$&+-.^_`|~"},
+		// space and other ASCII are percent-encoded.
+		{"my file.txt", "my%20file.txt"},
+		{"a(b)c", "a%28b%29c"},
+		{`q"x`, "q%22x"},
+		{"100%", "100%25"},
+		// multi-byte UTF-8 is encoded byte-by-byte, uppercase hex.
+		{"é", "%C3%A9"},
+		{"звіт", "%D0%B7%D0%B2%D1%96%D1%82"},
+	}
+	for _, tt := range tests {
+		if got := rfc5987Encode(tt.in); got != tt.want {
+			t.Errorf("rfc5987Encode(%q) = %q, want %q", tt.in, got, tt.want)
+		}
 	}
 }
 

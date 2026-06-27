@@ -177,6 +177,14 @@ By default `JSON` buffers the payload so an encode error can be reported before 
 resp.JSON(w, largeData, resp.WithStreamJSON())
 ```
 
+### Pretty-Printed JSON
+
+For human-facing or debug endpoints, `JSONIndent` formats the output:
+
+```go
+resp.JSONIndent(w, data, "", "  ")
+```
+
 ### Field Projection
 
 ```go

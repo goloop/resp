@@ -11,7 +11,7 @@ Module path changed to `github.com/goloop/resp/v2`.
 ### Added
 - `WithStreamJSON()` option to opt into zero-copy JSON streaming.
 - `WithErrorCode(int)` option to set a distinct business code in error bodies.
-- `XML`, `Blob`, `Created`, `Accepted` response helpers.
+- `XML`, `Blob`, `Created`, `Accepted`, `JSONIndent` response helpers.
 - `(*Response).Status()` and `(*Response).Header()` getters.
 - `ErrInvalidJSONPCallback` sentinel error.
 
@@ -28,7 +28,7 @@ Module path changed to `github.com/goloop/resp/v2`.
 - **Breaking:** `Redirect` honours only genuine redirect codes (300, 301, 302,
   303, 307, 308); other codes fall back to `302`.
 - `ServeFileAsDownload` now sets `Content-Length`, `X-Content-Type-Options:
-  nosniff`, and an RFC 5987 `filename*` form for non-ASCII file names.
+  nosniff`, and a strict RFC 5987 `filename*` form for non-ASCII file names.
 - Raised the language baseline to `go 1.24` and removed all third-party
   dependencies (the package is now zero-dependency).
 - `JSONEncodeFunc` and the public API use `any` instead of `interface{}`.

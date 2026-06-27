@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -286,6 +285,27 @@ func (r *Response) JSON(data any) error {
 	return err
 }
 
+// JSONIndent sends an indented (pretty-printed) JSON response — handy for
+// human-facing or debug endpoints. Unlike JSON it always uses the standard
+// library encoder with the given prefix and indent, ignoring any custom
+// encoder set via ApplyJSONEncoder (indentation is the whole point). Encoding
+// is buffered, so an error is reported before the status line is committed.
+func (r *Response) JSONIndent(data any, prefix, indent string) error {
+	r.prepare(StatusOK, MIMEApplicationJSONCharsetUTF8)
+
+	buf := getBuf()
+	defer putBuf(buf)
+	enc := json.NewEncoder(buf)
+	enc.SetIndent(prefix, indent)
+	if err := enc.Encode(data); err != nil {
+		return fmt.Errorf("failed to encode JSON response: %w", err)
+	}
+
+	r.httpWriter.WriteHeader(r.statusCode)
+	_, err := r.httpWriter.Write(buf.Bytes())
+	return err
+}
+
 // JSONP sends a JSONP response.
 // If the status code is not set - StatusOK will be set.
 // If ContentType isn't defined - MIMEApplicationJavaScript will
@@ -540,5 +560,5 @@ func attachmentDisposition(fileName string) string {
 	}
 
 	return `attachment; filename="` + ascii.String() +
-		`"; filename*=UTF-8''` + url.PathEscape(fileName)
+		`"; filename*=UTF-8''` + rfc5987Encode(fileName)
 }

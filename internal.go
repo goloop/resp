@@ -3,6 +3,7 @@ package resp
 import (
 	"bytes"
 	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -57,4 +58,39 @@ func validJSONPCallback(callback string) bool {
 		return false
 	}
 	return jsonpCallbackRe().MatchString(callback)
+}
+
+// rfc5987Encode percent-encodes s into an RFC 5987 ext-value, the form
+// required by the Content-Disposition filename* parameter. Only RFC 5987
+// "attr-char" bytes are emitted literally; every other byte of the UTF-8
+// representation is written as %XX, so arbitrary Unicode file names round
+// trip to compliant clients.
+func rfc5987Encode(s string) string {
+	const upperhex = "0123456789ABCDEF"
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; isAttrChar(c) {
+			b.WriteByte(c)
+		} else {
+			b.WriteByte('%')
+			b.WriteByte(upperhex[c>>4])
+			b.WriteByte(upperhex[c&0x0f])
+		}
+	}
+	return b.String()
+}
+
+// isAttrChar reports whether c is an RFC 5987 "attr-char" that may appear
+// literally in an ext-value.
+func isAttrChar(c byte) bool {
+	switch {
+	case c >= 'A' && c <= 'Z', c >= 'a' && c <= 'z', c >= '0' && c <= '9':
+		return true
+	}
+	switch c {
+	case '!', '#', '$', '&', '+', '-', '.', '^', '_', '`', '|', '~':
+		return true
+	}
+	return false
 }

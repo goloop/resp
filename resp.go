@@ -87,6 +87,39 @@ func JSON(w http.ResponseWriter, data any, opts ...Option) error {
 	return response.JSON(data)
 }
 
+// JSONIndent sends an indented (pretty-printed) JSON response to the client.
+//
+// It behaves like JSON but formats the output with the given prefix and
+// indent (as in json.Encoder.SetIndent), which is convenient for
+// human-readable or debug endpoints. The standard library encoder is always
+// used, so a custom encoder supplied via ApplyJSONEncoder is ignored here.
+//
+// Parameters:
+//   - w: The http.ResponseWriter that the JSON response will be written to.
+//   - data: The data to be encoded as JSON.
+//   - prefix: The line prefix for each JSON element (usually "").
+//   - indent: The per-level indentation string (e.g. "  " or "\t").
+//   - opts...: Optional configurations applied to the response.
+//
+// Returns:
+//   - An error if encoding the JSON fails. Otherwise, nil.
+//
+// Example usage:
+//
+//	func Handler(w http.ResponseWriter, r *http.Request) {
+//	    if err := resp.JSONIndent(w, data, "", "  "); err != nil {
+//	        // Handle error...
+//	    }
+//	}
+func JSONIndent(
+	w http.ResponseWriter,
+	data any,
+	prefix, indent string,
+	opts ...Option,
+) error {
+	return NewResponse(w, opts...).JSONIndent(data, prefix, indent)
+}
+
 // JSONP sends a JSONP (JSON with Padding) response to the client.
 //
 // This function is particularly useful for serving JSON responses to web pages

@@ -3,7 +3,6 @@ package resp
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 )
@@ -35,6 +34,9 @@ func WithHeader(key string, values ...string) Option {
 }
 
 // WithStatus sets the status code of the response.
+//
+// Note: Error ignores this option — its first argument is authoritative for
+// the HTTP status. NoContent always responds with 204 regardless.
 func WithStatus(code int) Option {
 	return func(r *Response) *Response {
 		return r.SetStatus(code)
@@ -461,12 +463,11 @@ func AddContentDisposition(
 	return func(r *Response) *Response {
 		// Check if UTF-8 encoding is needed for the filename.
 		if len(useUTF8Encoding) > 0 && useUTF8Encoding[0] {
-			// Encode the filename using URL encoding.
-			encodedFilename := url.PathEscape(filename)
+			// Encode the filename as an RFC 5987 ext-value.
 			value := fmt.Sprintf(
 				`%s; filename*=UTF-8''%s`,
 				dispositionType,
-				encodedFilename,
+				rfc5987Encode(filename),
 			)
 			return WithHeader(HeaderContentDisposition, value)(r)
 		} else {

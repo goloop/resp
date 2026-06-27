@@ -24,13 +24,18 @@
 //	}
 //
 // Key Features:
-//   - Streamlined response methods (JSON, HTML, String, etc.)
+//   - Streamlined response methods (JSON, JSONP, XML, HTML, String, Blob)
+//   - Safe-by-default encoding: a serialization error never leaves a
+//     half-written success response (opt into streaming with WithStreamJSON)
+//   - Validated JSONP callbacks (closes the reflected-XSS vector)
+//   - Consistent error responses (HTTP status mirrored into the body code)
+//   - REST helpers (Created, Accepted, NoContent, Redirect)
 //   - Flexible header and cookie management
-//   - Built-in error handling
 //   - File streaming and downloads
 //   - Support for custom JSON encoders
-//   - Chainable response options
+//   - Chainable response options and state getters (Status, Header)
 //   - Automatic content type handling
+//   - Zero third-party dependencies
 //
 // Quick Response Methods:
 //
@@ -60,10 +65,13 @@
 //    }
 //
 // 3. Error Handling:
-//    Send error responses with custom codes and messages:
+//    The first argument to Error is the HTTP status. It is written to the
+//    status line and mirrored into the JSON body's "code" field, so the two
+//    never disagree. Use WithErrorCode to set a distinct business code:
 //
 //    func HandleError(w http.ResponseWriter, r *http.Request) {
 //        if err := validateInput(r); err != nil {
+//            // HTTP 400, body {"code":400,"message":"Invalid input"}.
 //            resp.Error(w, http.StatusBadRequest, "Invalid input")
 //            return
 //        }
@@ -97,6 +105,48 @@
 //            log.Printf("Failed to send HTML: %v", err)
 //        }
 //    }
+//
+// 6. XML and Binary Responses:
+//    Serialize XML like JSON, or send raw bytes with an explicit type:
+//
+//    func HandleXML(w http.ResponseWriter, r *http.Request) {
+//        resp.XML(w, note)
+//    }
+//
+//    func HandlePDF(w http.ResponseWriter, r *http.Request) {
+//        // Content-Length is set automatically.
+//        resp.Blob(w, "application/pdf", pdfBytes)
+//    }
+//
+// 7. REST Helpers:
+//    Express common REST outcomes directly:
+//
+//    func CreateUser(w http.ResponseWriter, r *http.Request) {
+//        user := create(r)
+//        resp.Created(w, "/users/"+user.ID, user) // 201 + Location
+//    }
+//
+//    func Enqueue(w http.ResponseWriter, r *http.Request) {
+//        resp.Accepted(w, resp.R{"job_id": id}) // 202
+//    }
+//
+// 8. JSONP:
+//    The callback name is validated before anything is written; an unsafe
+//    name returns ErrInvalidJSONPCallback and produces no output:
+//
+//    func HandleJSONP(w http.ResponseWriter, r *http.Request) {
+//        cb := r.URL.Query().Get("callback")
+//        if err := resp.JSONP(w, data, cb); err != nil {
+//            resp.Error(w, http.StatusBadRequest, "invalid callback")
+//        }
+//    }
+//
+// Encoding safety:
+//   - JSON, JSONP and XML buffer the payload and commit the status only
+//     after a successful encode, so an encoding error can be reported before
+//     the response is written — the handler can still send a proper error.
+//   - WithStreamJSON opts into zero-copy streaming when memory matters more
+//     than that guarantee.
 //
 // Header Management:
 //
@@ -136,9 +186,12 @@
 // Default Behaviors:
 //   - Status code defaults to 200 OK if not specified
 //   - Content-Type is set automatically based on response type:
-//     - JSON: "application/json; charset=utf-8"
-//     - HTML: "text/html; charset=utf-8"
-//     - Text: "text/plain; charset=utf-8"
+//     - JSON:  "application/json; charset=utf-8"
+//     - JSONP: "application/javascript; charset=utf-8"
+//     - XML:   "application/xml; charset=utf-8"
+//     - HTML:  "text/html; charset=utf-8"
+//     - Text:  "text/plain"
+//     - Blob:  "application/octet-stream" (unless a type is given)
 //   - Errors are properly wrapped with context
 //
 // Best Practices:
