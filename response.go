@@ -467,6 +467,10 @@ func (r *Response) ServeFileAsDownload(fileName string, data []byte) error {
 // Only genuine redirect status codes are honoured: 300, 301, 302, 303, 307
 // and 308. Any other configured status (including the non-redirect 304, 305
 // and 306) falls back to StatusFound (302). This method always returns nil.
+//
+// Security: the url is written verbatim into the Location header. If it
+// originates from user input, validate it (e.g. allow only relative paths or
+// an allow-listed host) before calling Redirect to avoid an open-redirect.
 func (r *Response) Redirect(url string) error {
 	r.prepare(StatusFound)
 

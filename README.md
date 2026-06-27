@@ -134,6 +134,17 @@ resp.Blob(w, "application/pdf", pdfBytes)
 resp.XML(w, note)
 ```
 
+## Security Headers
+
+`SecurityHeaders()` applies a conservative, broadly-safe preset; CSP stays an explicit opt-in because a useful policy is application-specific:
+
+```go
+resp.JSON(w, data,
+    resp.SecurityHeaders(),               // nosniff, X-Frame-Options: DENY,
+                                          // Referrer-Policy: strict-origin-when-cross-origin
+    resp.WithCSP("default-src 'self'"))   // optional, explicit CSP
+```
+
 ## JSONP
 
 The callback name is validated before anything is written:

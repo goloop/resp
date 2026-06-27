@@ -639,6 +639,57 @@ func TestStatusAndHeaderGetters(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------
+// Security headers — conservative preset + explicit CSP opt-in.
+// -----------------------------------------------------------------------
+
+func TestSecurityHeaders(t *testing.T) {
+	w := httptest.NewRecorder()
+	if err := JSON(w, R{"ok": true}, SecurityHeaders()); err != nil {
+		t.Fatalf("JSON() error: %v", err)
+	}
+
+	want := map[string]string{
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options":        "DENY",
+		"Referrer-Policy":        "strict-origin-when-cross-origin",
+	}
+	for k, v := range want {
+		if got := w.Header().Get(k); got != v {
+			t.Errorf("SecurityHeaders() %s = %q, want %q", k, got, v)
+		}
+	}
+	// The preset must NOT set a CSP on its own.
+	if got := w.Header().Get("Content-Security-Policy"); got != "" {
+		t.Errorf("SecurityHeaders() unexpectedly set CSP = %q", got)
+	}
+}
+
+func TestSecurityHeaders_OverwritesAndIsIdempotent(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := NewResponse(w)
+	// A pre-existing weaker value must be overwritten, and a second apply
+	// must not append a duplicate header value.
+	r.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	SecurityHeaders()(r)
+	SecurityHeaders()(r)
+
+	if got := r.Header().Values("X-Frame-Options"); len(got) != 1 || got[0] != "DENY" {
+		t.Errorf("X-Frame-Options = %v, want exactly [DENY]", got)
+	}
+}
+
+func TestWithCSP(t *testing.T) {
+	w := httptest.NewRecorder()
+	policy := "default-src 'self'; img-src *"
+	if err := JSON(w, R{"ok": true}, SecurityHeaders(), WithCSP(policy)); err != nil {
+		t.Fatalf("JSON() error: %v", err)
+	}
+	if got := w.Header().Get("Content-Security-Policy"); got != policy {
+		t.Errorf("WithCSP() = %q, want %q", got, policy)
+	}
+}
+
+// -----------------------------------------------------------------------
 // fields — map projection must not depend on the concrete value type and
 // must never panic (the legacy code type-asserted map[string]any).
 // -----------------------------------------------------------------------

@@ -77,6 +77,41 @@ func WithErrorCode(code int) Option {
 	}
 }
 
+// SecurityHeaders applies a conservative, broadly-safe set of security
+// response headers:
+//
+//	X-Content-Type-Options: nosniff
+//	X-Frame-Options:        DENY
+//	Referrer-Policy:        strict-origin-when-cross-origin
+//
+// It deliberately does NOT set a Content-Security-Policy: an effective CSP is
+// application-specific and a wrong one silently breaks pages. Add one
+// explicitly with WithCSP when you know the policy your app needs. Any
+// existing values for these three headers are overwritten.
+func SecurityHeaders() Option {
+	return func(r *Response) *Response {
+		h := r.httpWriter.Header()
+		h.Set(HeaderXContentTypeOptions, "nosniff")
+		h.Set(HeaderXFrameOptions, "DENY")
+		h.Set(HeaderReferrerPolicy, "strict-origin-when-cross-origin")
+		return r
+	}
+}
+
+// WithCSP sets the Content-Security-Policy header to the given policy. CSP is
+// kept separate from SecurityHeaders because a useful policy is specific to
+// each application; this option lets you opt in explicitly.
+//
+//	resp.JSON(w, data,
+//	    resp.SecurityHeaders(),
+//	    resp.WithCSP("default-src 'self'"))
+func WithCSP(policy string) Option {
+	return func(r *Response) *Response {
+		r.httpWriter.Header().Set(HeaderContentSecurityPolicy, policy)
+		return r
+	}
+}
+
 // WithStatusContinue sets the status code to 100.
 func WithStatusContinue() Option {
 	return WithStatus(StatusContinue)

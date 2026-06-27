@@ -13,6 +13,8 @@ Module path changed to `github.com/goloop/resp/v2`.
 - `WithErrorCode(int)` option to set a distinct business code in error bodies.
 - `XML`, `Blob`, `Created`, `Accepted`, `JSONIndent` response helpers.
 - `(*Response).Status()` and `(*Response).Header()` getters.
+- `SecurityHeaders()` conservative security-header preset and `WithCSP()`
+  option for an explicit Content-Security-Policy.
 - `ErrInvalidJSONPCallback` sentinel error.
 
 ### Changed
