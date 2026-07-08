@@ -174,15 +174,22 @@ func filterFields(data any, fields []string, keep bool) any {
 	case reflect.Slice, reflect.Array:
 		length := rv.Len()
 		if length > 0 {
-			elemKind := rv.Index(0).Kind()
-			if elemKind == reflect.Ptr {
-				elemKind = rv.Index(0).Elem().Kind()
+			// Determine the element kind from the slice's element type, not the
+			// first value, so a nil pointer at index 0 does not misclassify the
+			// slice.
+			et := rv.Type().Elem()
+			if et.Kind() == reflect.Ptr {
+				et = et.Elem()
 			}
-			if elemKind == reflect.Struct {
+			if et.Kind() == reflect.Struct {
 				result := make([]R, length)
 				for i := range length {
 					elem := rv.Index(i)
 					if elem.Kind() == reflect.Ptr {
+						if elem.IsNil() {
+							result[i] = nil
+							continue
+						}
 						elem = elem.Elem()
 					}
 					result[i] = pickStruct(elem, set, keep)
@@ -210,9 +217,12 @@ func pickStruct(rv reflect.Value, set map[string]struct{}, keep bool) R {
 	result := make(R)
 	rt := rv.Type()
 	for i := range rt.NumField() {
-		name := rt.Field(i).Name
-		if _, ok := set[name]; ok == keep {
-			result[name] = rv.Field(i).Interface()
+		f := rt.Field(i)
+		if !f.IsExported() {
+			continue // reflect cannot read unexported fields; skip them
+		}
+		if _, ok := set[f.Name]; ok == keep {
+			result[f.Name] = rv.Field(i).Interface()
 		}
 	}
 

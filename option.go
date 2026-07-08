@@ -50,12 +50,13 @@ func WithCookie(cookie *http.Cookie) Option {
 	}
 }
 
-// WithStreamJSON switches JSON (and the JSON body of JSONP) into streaming
-// mode: the payload is encoded directly into the http.ResponseWriter
-// instead of an intermediate buffer. This lowers memory use for very large
-// responses, but trades away the buffered-mode guarantee — an encoding
-// error may surface only after the status line and part of the body have
-// already been written. Use it when you knowingly accept that trade-off.
+// WithStreamJSON switches JSON into streaming mode: the payload is encoded
+// directly into the http.ResponseWriter instead of an intermediate buffer.
+// This lowers memory use for very large responses, but trades away the
+// buffered-mode guarantee - an encoding error may surface only after the status
+// line and part of the body have already been written. Use it when you
+// knowingly accept that trade-off. JSONP is always buffered (its body is
+// trimmed and wrapped in the callback), so this option does not affect it.
 func WithStreamJSON() Option {
 	return func(r *Response) *Response {
 		r.streamJSON = true
@@ -434,7 +435,7 @@ func AddETag(value string) Option {
 
 // AddLastModified sets the Last-Modified header.
 func AddLastModified(t time.Time) Option {
-	return WithHeader(HeaderLastModified, t.Format(time.RFC1123))
+	return WithHeader(HeaderLastModified, t.UTC().Format(http.TimeFormat))
 }
 
 // AddContentLength sets the Content-Length header.
@@ -464,7 +465,7 @@ func AddServer(value string) Option {
 
 // AddDate sets the Date header.
 func AddDate(date time.Time) Option {
-	return WithHeader(HeaderDate, date.Format(time.RFC1123))
+	return WithHeader(HeaderDate, date.UTC().Format(http.TimeFormat))
 }
 
 // AddLocation sets the Location header.
@@ -480,7 +481,7 @@ func AddRetryAfter[T int | time.Time | time.Duration](value T) Option {
 		case int:
 			stringValue = strconv.Itoa(v)
 		case time.Time:
-			stringValue = v.Format(time.RFC1123)
+			stringValue = v.UTC().Format(http.TimeFormat)
 		case time.Duration:
 			stringValue = strconv.Itoa(int(v.Seconds()))
 		}
@@ -496,20 +497,23 @@ func AddContentDisposition(
 	useUTF8Encoding ...bool,
 ) Option {
 	return func(r *Response) *Response {
-		// Check if UTF-8 encoding is needed for the filename.
+		// Sanitize both parts so a quote or control character in the filename
+		// (or syntax in the disposition type) cannot inject extra header
+		// parameters.
+		dt := sanitizeDispositionType(dispositionType)
 		if len(useUTF8Encoding) > 0 && useUTF8Encoding[0] {
-			// Encode the filename as an RFC 5987 ext-value.
+			// A sanitized ASCII fallback plus an RFC 5987 ext-value so UTF-8
+			// names reach compliant clients intact.
 			value := fmt.Sprintf(
-				`%s; filename*=UTF-8''%s`,
-				dispositionType,
+				`%s; filename="%s"; filename*=UTF-8''%s`,
+				dt,
+				sanitizeFilename(filename),
 				rfc5987Encode(filename),
 			)
 			return WithHeader(HeaderContentDisposition, value)(r)
-		} else {
-			// Standard encoding.
-			value := fmt.Sprintf(`%s; filename="%s"`, dispositionType, filename)
-			return WithHeader(HeaderContentDisposition, value)(r)
 		}
+		value := fmt.Sprintf(`%s; filename="%s"`, dt, sanitizeFilename(filename))
+		return WithHeader(HeaderContentDisposition, value)(r)
 	}
 }
 
@@ -560,12 +564,12 @@ func AddIfNoneMatch(value ...string) Option {
 
 // AddIfModifiedSince sets the If-Modified-Since header.
 func AddIfModifiedSince(t time.Time) Option {
-	return WithHeader(HeaderIfModifiedSince, t.Format(time.RFC1123))
+	return WithHeader(HeaderIfModifiedSince, t.UTC().Format(http.TimeFormat))
 }
 
 // AddIfUnmodifiedSince sets the If-Unmodified-Since header.
 func AddIfUnmodifiedSince(t time.Time) Option {
-	return WithHeader(HeaderIfUnmodifiedSince, t.Format(time.RFC1123))
+	return WithHeader(HeaderIfUnmodifiedSince, t.UTC().Format(http.TimeFormat))
 }
 
 // AddIfRange sets the If-Range header.
@@ -729,7 +733,7 @@ func AddWarning(warnings ...WarningHeader) Option {
 		for _, warning := range warnings {
 			dateStr := ""
 			if !warning.Date.IsZero() {
-				dateStr = warning.Date.Format(time.RFC1123)
+				dateStr = warning.Date.UTC().Format(http.TimeFormat)
 			}
 
 			value := strconv.Itoa(warning.Code)

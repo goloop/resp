@@ -276,7 +276,7 @@ func Error(
 //	func Handler(w http.ResponseWriter, r *http.Request) {
 //	    file, err := os.Open("video.mp4")
 //	    if err != nil {
-//	        resp.Error(w, resp.StatusNotFound)
+//	        resp.Error(w, resp.StatusNotFound, "Not found")
 //	        return
 //	    }
 //	    defer file.Close()
@@ -324,7 +324,7 @@ func Stream(
 //	    // Assuming there's a query parameter 'file' with the filename.
 //	    filename := r.URL.Query().Get("file")
 //	    if filename == "" {
-//	        resp.Error(w, "File not specified", http.StatusBadRequest)
+//	        resp.Error(w, http.StatusBadRequest, "File not specified")
 //	        return
 //	    }
 //
@@ -333,7 +333,7 @@ func Stream(
 //	        resp.AddContentDisposition("attachment", filename))
 //	    if err != nil {
 //	        log.Printf("Failed to serve file: %v", err)
-//	        resp.Error(w, "Failed to serve file", 500)
+//	        resp.Error(w, 500, "Failed to serve file")
 //	    }
 //	}
 func ServeFile(
@@ -380,7 +380,7 @@ func ServeFile(
 //	    err := ServeFileAsDownload(w, filename, fileData)
 //	    if err != nil {
 //	        log.Printf("Failed to serve file download: %v", err)
-//	        resp.Error(w, "Failed to serve file download", 500)
+//	        resp.Error(w, 500, "Failed to serve file download")
 //	    }
 //	}
 func ServeFileAsDownload(
@@ -497,7 +497,7 @@ func NoContent(w http.ResponseWriter, opts ...Option) error {
 //	    if err := HTML(w, template, WithStatus(http.StatusOK)); err != nil {
 //	        // Handle error
 //	        log.Printf("Failed to send HTML response: %v", err)
-//	        resp.Error(w, "Failed to send HTML response", 500)
+//	        resp.Error(w, 500, "Failed to send HTML response")
 //	    }
 //	}
 func HTML(w http.ResponseWriter, data string, opts ...Option) error {

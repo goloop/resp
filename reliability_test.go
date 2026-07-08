@@ -7,10 +7,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // trackingWriter is an http.ResponseWriter that records whether the status
@@ -811,4 +813,69 @@ func FuzzOnlyFields(f *testing.F) {
 			}
 		}
 	})
+}
+
+// TestServeFile_DetectsContentType guards BUG-03: ServeFile must not preset
+// application/octet-stream, so http.ServeFile can detect the real type and a
+// browser renders the file instead of downloading it.
+func TestServeFile_DetectsContentType(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "page-*.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("<html><body>hi</body></html>"); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if err := ServeFile(w, req, f.Name()); err != nil {
+		t.Fatalf("ServeFile: %v", err)
+	}
+	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+		t.Errorf("Content-Type = %q, want text/html...", ct)
+	}
+}
+
+// TestContentDisposition_NoInjection guards BUG-04: a quote in the filename
+// must not break out of the quoted-string to inject extra header parameters.
+func TestContentDisposition_NoInjection(t *testing.T) {
+	w := httptest.NewRecorder()
+	JSON(w, R{"ok": true},
+		AddContentDisposition("attachment", `report.pdf"; dummy="x`))
+	got := w.Header().Get("Content-Disposition")
+	if strings.Contains(got, `"; dummy=`) || strings.Count(got, `"`) != 2 {
+		t.Errorf("Content-Disposition = %q, injection not neutralized", got)
+	}
+}
+
+// TestError_UnknownStatusHasMessage guards BUG-06: a valid but unnamed status
+// still yields a non-empty message.
+func TestError_UnknownStatusHasMessage(t *testing.T) {
+	w := httptest.NewRecorder()
+	Error(w, 599, "")
+	if !strings.Contains(w.Body.String(), `"message":"Unknown Status"`) {
+		t.Errorf("body = %s, want a non-empty message", w.Body.String())
+	}
+}
+
+// TestHTTPDates_AreGMT guards BUG-05: date headers are IMF-fixdate in GMT.
+func TestHTTPDates_AreGMT(t *testing.T) {
+	w := httptest.NewRecorder()
+	JSON(w, R{"ok": true},
+		AddLastModified(time.Date(2026, 7, 8, 12, 0, 0, 0, time.FixedZone("EEST", 3*3600))))
+	if got := w.Header().Get("Last-Modified"); got != "Wed, 08 Jul 2026 09:00:00 GMT" {
+		t.Errorf("Last-Modified = %q, want GMT IMF-fixdate", got)
+	}
+}
+
+// TestContentDisposition_TypeSanitized guards that a disposition type made of
+// only invalid characters falls back to "attachment".
+func TestContentDisposition_TypeSanitized(t *testing.T) {
+	w := httptest.NewRecorder()
+	JSON(w, R{"ok": true}, AddContentDisposition(`";`, "file.pdf"))
+	if got := w.Header().Get("Content-Disposition"); !strings.HasPrefix(got, "attachment;") {
+		t.Errorf("Content-Disposition = %q, want attachment fallback", got)
+	}
 }

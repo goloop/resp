@@ -410,7 +410,11 @@ func (r *Response) Error(status int, message string) error {
 	}
 
 	if message == "" {
-		message = statusMessages[status]
+		if message = statusMessages[status]; message == "" {
+			if message = http.StatusText(status); message == "" {
+				message = "Unknown Status"
+			}
+		}
 	}
 
 	return r.JSON(&ErrorResponse{Code: code, Message: message})
@@ -432,11 +436,15 @@ func (r *Response) Stream(data io.Reader) error {
 // returns nil; inspect the written response (e.g. via a recorder) rather
 // than the return value to detect failures.
 func (r *Response) ServeFile(req *http.Request, file string) error {
-	r.prepare(StatusOK, MIMEOctetStream)
+	// Do not preset a default Content-Type: http.ServeFile only detects the
+	// type (by extension, then sniffing) when Content-Type is still unset, so
+	// forcing octet-stream here would make every file download instead of
+	// render. A Content-Type set by the caller via options is left in place and
+	// respected by http.ServeFile.
+	r.prepare(StatusOK)
 
-	// The http.ServeFile function from the net/http package independently
-	// sets the response headers and status code before starting the file
-	// transfer, no need: r.httpWriter.WriteHeader(r.statusCode)
+	// http.ServeFile sets the headers and status code itself before starting
+	// the transfer, so this method does not call WriteHeader.
 	http.ServeFile(r.httpWriter, req, file)
 	return nil
 }
@@ -550,6 +558,15 @@ func (r *Response) HTML(html string) error {
 // header) and always appends an RFC 5987 filename* form so UTF-8 names are
 // delivered intact to compliant clients.
 func attachmentDisposition(fileName string) string {
+	return `attachment; filename="` + sanitizeFilename(fileName) +
+		`"; filename*=UTF-8''` + rfc5987Encode(fileName)
+}
+
+// sanitizeFilename returns fileName reduced to an ASCII quoted-string-safe
+// form: control characters, double quotes and backslashes are dropped and any
+// non-ASCII rune becomes an underscore. This prevents a filename from breaking
+// out of the quoted-string and injecting extra Content-Disposition parameters.
+func sanitizeFilename(fileName string) string {
 	var ascii strings.Builder
 	ascii.Grow(len(fileName))
 	for _, r := range fileName {
@@ -562,7 +579,22 @@ func attachmentDisposition(fileName string) string {
 			ascii.WriteRune(r)
 		}
 	}
+	return ascii.String()
+}
 
-	return `attachment; filename="` + ascii.String() +
-		`"; filename*=UTF-8''` + rfc5987Encode(fileName)
+// sanitizeDispositionType returns t reduced to a header token (letters, digits
+// and '-'), defaulting to "attachment" when nothing valid remains, so a custom
+// disposition type cannot inject header syntax.
+func sanitizeDispositionType(t string) string {
+	var b strings.Builder
+	for _, r := range t {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-':
+			b.WriteRune(r)
+		}
+	}
+	if b.Len() == 0 {
+		return "attachment"
+	}
+	return b.String()
 }

@@ -1236,7 +1236,10 @@ func TestAddContentDisposition_UTF8(t *testing.T) {
 
 	resp.httpWriter.WriteHeader(resp.statusCode)
 
-	want := `attachment; filename*=UTF-8''%E3%83%AD%E3%82%B7%E3%82%A2%E4%BA` +
+	// The UTF-8 form now also carries a sanitized ASCII fallback (non-ASCII
+	// runes become underscores) before the RFC 5987 filename* value.
+	want := `attachment; filename="___________.txt"; ` +
+		`filename*=UTF-8''%E3%83%AD%E3%82%B7%E3%82%A2%E4%BA` +
 		`%BA%E3%81%AF%E3%83%86%E3%83%AD%E3%83%AA%E3%82%B9%E3%83%88%E3%81%A0.txt`
 	contentDisposition := w.Header().Get("Content-Disposition")
 	if contentDisposition != want {
@@ -1848,7 +1851,7 @@ func TestAddWarningWithDateAndAgent(t *testing.T) {
 	resp := NewResponse(w, AddWarning(warning))
 	resp.httpWriter.WriteHeader(http.StatusOK)
 
-	expectedDateStr := warningDate.Format(time.RFC1123)
+	expectedDateStr := warningDate.UTC().Format(http.TimeFormat)
 	expectedValue := fmt.Sprintf("%d %s \"%s\" \"%s\"",
 		warning.Code, warning.Agent, warning.Text, expectedDateStr)
 

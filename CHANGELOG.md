@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0]
+
+Minor release: correctness and safety fixes. Fully backward compatible.
+
+### Fixed
+- `OnlyFields`/`ExcludeFields` no longer panic on a struct with unexported
+  fields (they are skipped) or on a nil pointer element within a slice.
+- `ServeFile` no longer forces `application/octet-stream`, so `http.ServeFile`
+  detects the real content type and files render instead of downloading. A
+  caller-set Content-Type is still respected.
+- `AddContentDisposition` sanitizes the filename and disposition type, so a
+  quote or control character can no longer inject extra header parameters; the
+  UTF-8 form now also emits a sanitized ASCII fallback.
+- Date headers (`AddLastModified`, `AddDate`, `AddRetryAfter`,
+  `AddIfModifiedSince`, `AddIfUnmodifiedSince`, `AddWarning`) are formatted as
+  IMF-fixdate in GMT, as required for HTTP dates.
+- `Error` with a valid but unnamed status code now returns a non-empty message,
+  falling back to `http.StatusText` and then "Unknown Status".
+
+### Documentation
+- `WithStreamJSON` no longer claims to affect JSONP (JSONP is always buffered).
+- Fixed outdated godoc examples that used the old `Error` argument order.
+
 ## [2.0.0]
 
 Module path changed to `github.com/goloop/resp/v2`.

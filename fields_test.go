@@ -339,3 +339,39 @@ func TestExcludeFieldsMap(t *testing.T) {
 		t.Errorf("ExcludeFields() = %v, want %v", result, expected)
 	}
 }
+
+// userWithSecret has an unexported field, which reflection cannot read.
+type userWithSecret struct {
+	ID    int
+	Email string
+	token string
+}
+
+// TestPickStructSkipsUnexported guards against a panic when a struct carries an
+// unexported field: pickStruct must skip it, not call Interface on it.
+func TestPickStructSkipsUnexported(t *testing.T) {
+	in := userWithSecret{ID: 1, Email: "a@b.c", token: "secret"}
+
+	got := ExcludeFields(in, "Email")
+	if m, ok := got.(R); !ok || len(m) != 1 || m["ID"] != 1 {
+		t.Fatalf("ExcludeFields = %v, want map with only ID", got)
+	}
+
+	got = OnlyFields(in, "Email")
+	if m, ok := got.(R); !ok || len(m) != 1 || m["Email"] != "a@b.c" {
+		t.Fatalf("OnlyFields = %v, want map with only Email", got)
+	}
+}
+
+// TestFilterFieldsNilPointerElement guards against a panic when a slice of
+// pointers contains a nil element, in any position.
+func TestFilterFieldsNilPointerElement(t *testing.T) {
+	u := &User{ID: 2, Email: "z@z.z"}
+
+	for _, in := range []any{[]*User{u, nil}, []*User{nil, u}} {
+		got, ok := OnlyFields(in, "ID").([]R)
+		if !ok || len(got) != 2 {
+			t.Fatalf("OnlyFields(%v) = %v, want a 2-element []R", in, got)
+		}
+	}
+}
