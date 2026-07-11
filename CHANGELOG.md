@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0]
+
+Minor release: `OnlyFields`/`ExcludeFields` now respect `json` tags.
+
+### Changed
+- `OnlyFields` and `ExcludeFields` project a struct the way `encoding/json`
+  would: a tagged field is emitted under its `json` name (not the Go field
+  name), and a field can be selected by either its `json` name or its Go field
+  name. This fixes redaction on tagged structs: `ExcludeFields(u,
+  "password_hash")` now drops a field declared as `PasswordHash string`
+  with tag `json:"password_hash"` instead of leaking it under a `PasswordHash`
+  key. Structs without json tags are unaffected (still keyed by Go field name).
+
+### Fixed
+- A field tagged `json:"-"` is now never emitted by `OnlyFields`/`ExcludeFields`,
+  so a field excluded from JSON serialization can no longer leak through them.
+
 ## [2.1.0]
 
 Minor release: correctness and safety fixes. Fully backward compatible.

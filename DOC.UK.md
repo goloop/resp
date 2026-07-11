@@ -206,10 +206,15 @@ resp.NewResponse(w, resp.ApplyJSONEncoder(enc)).JSON(resp.R{"message": "ok"})
 Формуйте навантаження до серіалізації:
 
 ```go
-data := resp.OnlyFields(user, "ID", "Email") // лишити лише ці
-data = resp.ExcludeFields(user, "Password")   // або прибрати ці
+data := resp.OnlyFields(user, "id", "email")     // лишити лише ці
+data = resp.ExcludeFields(user, "password_hash") // або прибрати ці
 resp.JSON(w, data)
 ```
+
+Обидві поважають теги `json`: поле з тегом проєктується під його `json`-ім'ям,
+вибрати поле можна як за `json`-ім'ям, так і за іменем Go-поля, а поле з
+`json:"-"` не виводиться ніколи (тож воно не просочиться крізь редагування).
+Структури без json-тегів мапляться за іменами Go-полів.
 
 ## Файли й завантаження
 

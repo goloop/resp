@@ -363,6 +363,42 @@ func TestPickStructSkipsUnexported(t *testing.T) {
 	}
 }
 
+// tagged mirrors a database row: json tags rename the keys and hide one field
+// from serialization entirely.
+type tagged struct {
+	ID       int    `json:"id"`
+	Email    string `json:"email"`
+	PassHash string `json:"password_hash"`
+	Internal string `json:"-"`
+}
+
+// TestPickStructHonorsJSONTags checks that field selection follows the json
+// tags: output keys are the tag names, a field can be excluded by its json
+// name, and a json:"-" field never appears.
+func TestPickStructHonorsJSONTags(t *testing.T) {
+	in := tagged{ID: 7, Email: "a@b.c", PassHash: "secret", Internal: "x"}
+
+	// Exclude by the json name; the emitted keys must be json names, and the
+	// secret plus the json:"-" field must both be gone.
+	got := ExcludeFields(in, "password_hash")
+	want := R{"id": 7, "email": "a@b.c"}
+	if m, ok := got.(R); !ok || !reflect.DeepEqual(m, want) {
+		t.Fatalf("ExcludeFields = %v, want %v", got, want)
+	}
+
+	// The Go field name still works as a selector for backward compatibility.
+	got = ExcludeFields(in, "PassHash")
+	if m, ok := got.(R); !ok || !reflect.DeepEqual(m, want) {
+		t.Fatalf("ExcludeFields by Go name = %v, want %v", got, want)
+	}
+
+	// OnlyFields projects under json names too, and cannot resurrect json:"-".
+	got = OnlyFields(in, "email", "Internal")
+	if m, ok := got.(R); !ok || !reflect.DeepEqual(m, R{"email": "a@b.c"}) {
+		t.Fatalf("OnlyFields = %v, want {email}", got)
+	}
+}
+
 // TestFilterFieldsNilPointerElement guards against a panic when a slice of
 // pointers contains a nil element, in any position.
 func TestFilterFieldsNilPointerElement(t *testing.T) {

@@ -2,6 +2,7 @@ package resp
 
 import (
 	"reflect"
+	"strings"
 )
 
 // OnlyFields extracts only the specified fields from the provided
@@ -209,10 +210,13 @@ func filterFields(data any, fields []string, keep bool) any {
 }
 
 // pickStruct projects the exported fields of a struct value into an R map,
-// keeping or dropping the names present in set according to keep. The
-// membership test (`_, ok := set[name]; ok == keep`) yields the field for
-// the "only" mode when it is in the set and for the "exclude" mode when it
-// is not.
+// keeping or dropping the fields named in set according to keep. The result
+// mirrors what encoding/json would produce: a field carrying a `json` tag is
+// emitted under its tag name, and a field tagged `json:"-"` is never emitted
+// (it must not leak through a redaction helper). A field matches the set by
+// either its json name or its Go field name, so ExcludeFields(u, "password")
+// and ExcludeFields(u, "Password") both drop a `Password string json:"password"`
+// field. Fields without a json tag keep emitting under their Go field name.
 func pickStruct(rv reflect.Value, set map[string]struct{}, keep bool) R {
 	result := make(R)
 	rt := rv.Type()
@@ -221,12 +225,40 @@ func pickStruct(rv reflect.Value, set map[string]struct{}, keep bool) R {
 		if !f.IsExported() {
 			continue // reflect cannot read unexported fields; skip them
 		}
-		if _, ok := set[f.Name]; ok == keep {
-			result[f.Name] = rv.Field(i).Interface()
+		name, skip := jsonName(f)
+		if skip {
+			continue // json:"-": never serialized, never leaked
+		}
+		_, byName := set[name]
+		_, byField := set[f.Name]
+		if (byName || byField) == keep {
+			result[name] = rv.Field(i).Interface()
 		}
 	}
 
 	return result
+}
+
+// jsonName reports the key a field serializes under and whether it is omitted
+// entirely. It follows encoding/json: the tag value "-" (no options) drops the
+// field; "-," names it "-"; an empty or absent name falls back to the Go field
+// name. Only the name is honored here - options such as omitempty shape
+// emptiness, not the key, and are irrelevant to field selection.
+func jsonName(f reflect.StructField) (name string, skip bool) {
+	tag, ok := f.Tag.Lookup("json")
+	if !ok {
+		return f.Name, false
+	}
+	if tag == "-" {
+		return "", true
+	}
+	if i := strings.IndexByte(tag, ','); i >= 0 {
+		tag = tag[:i]
+	}
+	if tag == "" {
+		return f.Name, false
+	}
+	return tag, false
 }
 
 // pickMap projects a string-keyed map into an R map, keeping or dropping

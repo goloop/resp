@@ -205,10 +205,15 @@ human-facing or debug endpoints.
 Shape the payload before serialization:
 
 ```go
-data := resp.OnlyFields(user, "ID", "Email") // keep only these
-data = resp.ExcludeFields(user, "Password")   // or drop these
+data := resp.OnlyFields(user, "id", "email")     // keep only these
+data = resp.ExcludeFields(user, "password_hash") // or drop these
 resp.JSON(w, data)
 ```
+
+Both follow `json` tags: a tagged field is projected under its `json` name, a
+field may be selected by either its `json` name or its Go field name, and a
+`json:"-"` field is never emitted (so it cannot leak through the redaction).
+Structs without json tags are keyed by their Go field names.
 
 ## Files and downloads
 
