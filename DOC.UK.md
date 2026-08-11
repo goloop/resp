@@ -112,7 +112,7 @@ resp.NewResponse(w).
   `AsOctetStream()`, …).
 - **Кукі** — `WithCookie(cookie)`.
 - **Поведінка JSON** — `WithStreamJSON()`, `ApplyJSONEncoder(fn)`.
-- **Помилки** — `WithErrorCode(n)`.
+- **Помилки** — `WithErrorCode(n)`, `WithErrorSlug(s)`.
 - **Безпека** — `SecurityHeaders()`, `WithCSP(policy)`.
 
 ```go
@@ -141,6 +141,21 @@ resp.Error(w, http.StatusNotFound, "User not found", resp.WithErrorCode(1042))
 ```
 
 `WithErrorCode(n)` виставляє окремий бізнес-код у тілі, зберігаючи HTTP-статус.
+
+`WithErrorSlug(s)` додає машинне ім'я поруч із кодом і повідомленням - поле, на
+якому клієнт робить switch і за яким шукається i18n-ключ:
+
+```go
+// HTTP 409, тіло {"code":409,"error":"slug_taken","message":"That name is taken"}.
+resp.Error(w, http.StatusConflict, "That name is taken",
+    resp.WithErrorSlug("slug_taken"))
+```
+
+Числовий код не годиться ні для того, ні для іншого без реєстру відповідностей,
+а `1042` нічого не каже ні в лозі, ні в тесті, що впав. Поле пропускається,
+коли не задане, тож тіла без слага - байт у байт ті самі, що були. Тримайте
+слаги фіксованим набором форми `[a-z0-9_]+`: значення видається як є, тож це
+не місце для будь-чого з запиту.
 Аргумент статусу має перевагу над опцією `WithStatus`, а значення поза діапазоном
 відкочується до `500 Internal Server Error`.
 

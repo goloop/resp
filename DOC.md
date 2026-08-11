@@ -144,6 +144,22 @@ resp.Error(w, http.StatusNotFound, "User not found", resp.WithErrorCode(1042))
 HTTP status. The status argument takes precedence over a `WithStatus` option,
 and an out-of-range value falls back to `500 Internal Server Error`.
 
+`WithErrorSlug(s)` adds a machine-readable name beside the code and the
+message - the field a client switches on and an i18n key is looked up by:
+
+```go
+// HTTP 409, body {"code":409,"error":"slug_taken","message":"That name is taken"}.
+resp.Error(w, http.StatusConflict, "That name is taken",
+    resp.WithErrorSlug("slug_taken"))
+```
+
+A numeric code cannot serve either purpose without a registry mapping numbers
+to meanings, and `1042` says nothing in a log line or a failing test. The
+field is omitted when unset, so bodies that name no slug are byte for byte
+what they were. Keep slugs to a fixed set shaped like `[a-z0-9_]+`; the value
+is emitted verbatim, which makes it the wrong place for anything a request
+supplied.
+
 ## Safe-by-default encoding
 
 By default `JSON`/`JSONP`/`XML` encode into a pooled buffer first, so a
