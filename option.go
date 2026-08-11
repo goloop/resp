@@ -78,6 +78,32 @@ func WithErrorCode(code int) Option {
 	}
 }
 
+// WithErrorSlug adds a machine-readable name to the JSON error body produced
+// by Error, beside the numeric code and the human message:
+//
+//	resp.Error(w, 409, "That name is already in use",
+//	    resp.WithErrorSlug("slug_taken"))
+//	// HTTP 409, body {"code":409,"error":"slug_taken","message":"..."}
+//
+// This is the field a client switches on and a translation key is looked up
+// by. A numeric code cannot serve either purpose without a registry mapping
+// numbers to meanings, and such a registry is exactly the thing that stops
+// being maintained; the number also says nothing in a log line or a failing
+// test, where the slug says everything.
+//
+// The slug is the application's own vocabulary, so it is not validated - but
+// keep it to a short constant from a fixed set, in the shape of [a-z0-9_]+.
+// It is copied into the response body verbatim, which makes it the wrong place
+// for anything that came from a request.
+//
+// Without this option the body is unchanged, field for field.
+func WithErrorSlug(slug string) Option {
+	return func(r *Response) *Response {
+		r.errorSlug = slug
+		return r
+	}
+}
+
 // SecurityHeaders applies a conservative, broadly-safe set of security
 // response headers:
 //

@@ -9,7 +9,18 @@ var ErrInvalidJSONPCallback = errors.New("invalid JSONP callback name")
 
 // ErrorResponse represents an error response.
 type ErrorResponse struct {
-	Code    int    `json:"code"`    // error code
+	Code int `json:"code"` // error code
+
+	// Error is a machine-readable name for what went wrong, such as
+	// "rate_limit" or "slug_taken". It is what a client switches on and what
+	// a translation key is looked up by; a number cannot do either without a
+	// registry that nobody maintains, and "1042" says nothing in a log or a
+	// test either.
+	//
+	// It is omitted when unset, so a response that does not name one is
+	// exactly the bytes it was before this field existed. See WithErrorSlug.
+	Error string `json:"error,omitempty"`
+
 	Message string `json:"message"` // error message
 }
 

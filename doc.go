@@ -72,6 +72,16 @@
 //    func HandleError(w http.ResponseWriter, r *http.Request) {
 //        if err := validateInput(r); err != nil {
 //            // HTTP 400, body {"code":400,"message":"Invalid input"}.
+//        Use WithErrorSlug to add a machine-readable name beside them:
+//
+//            resp.Error(w, 409, "That name is taken",
+//                resp.WithErrorSlug("slug_taken"))
+//            // HTTP 409, body {"code":409,"error":"slug_taken","message":...}
+//
+//        That is the field a client switches on and a translation key is
+//        looked up by; a number needs a registry mapping numbers to meanings,
+//        and it says nothing in a log line or a failing test. It is omitted
+//        when unset, so bodies that do not name one are unchanged.
 //            resp.Error(w, http.StatusBadRequest, "Invalid input")
 //            return
 //        }

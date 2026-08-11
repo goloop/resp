@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0]
+
+Minor release: a machine-readable name for an error.
+
+### Added
+- `WithErrorSlug` adds an `error` field to the JSON error body, beside the
+  numeric code and the human message: `{"code":409,"error":"slug_taken",
+  "message":"..."}`. That is the field a client switches on and a translation
+  key is looked up by. A numeric code cannot serve either purpose without a
+  registry mapping numbers to meanings - which is the thing that stops being
+  maintained - and it says nothing in a log line or a failing test either.
+  Without it, applications wrap `Error` in their own helper and the package's
+  own error path goes unused.
+- The field is omitted when unset, so every response that does not name a slug
+  is byte for byte what it was before. `WithErrorCode` and the mirroring of the
+  HTTP status into `code` are unchanged.
+
 ## [2.2.0]
 
 Minor release: `OnlyFields`/`ExcludeFields` now respect `json` tags.

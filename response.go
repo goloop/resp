@@ -43,6 +43,7 @@ type Response struct {
 	jsonEncodeFunc JSONEncodeFunc
 	streamJSON     bool
 	errorCode      *int
+	errorSlug      string
 }
 
 // NewResponse creates a new instance of Response with the provided
@@ -417,7 +418,11 @@ func (r *Response) Error(status int, message string) error {
 		}
 	}
 
-	return r.JSON(&ErrorResponse{Code: code, Message: message})
+	return r.JSON(&ErrorResponse{
+		Code:    code,
+		Error:   r.errorSlug,
+		Message: message,
+	})
 }
 
 // Stream sends a stream response.
