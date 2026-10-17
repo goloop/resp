@@ -305,3 +305,7 @@ var ErrInvalidJSONPCallback = errors.New("invalid JSONP callback name")
 
 **Ховайте чутливі поля.** Запускайте `ExcludeFields`/`OnlyFields` перед `JSON`,
 щоб пароль чи токен ніколи не дійшов до енкодера.
+
+## Реліз v2.3.2
+
+SetHeader та AddHeader однаково розпізнають одиничні заголовки в будь-якому регістрі, включно з content-type та etag.

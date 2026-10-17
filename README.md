@@ -85,3 +85,7 @@ Contributions are welcome. Please run `go test ./...`, `go vet ./...` and
 ## License
 
 `resp` is released under the MIT License. See [LICENSE](LICENSE).
+
+## Release v2.3.2
+
+Recognize single-value headers regardless of letter case.

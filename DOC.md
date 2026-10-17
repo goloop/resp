@@ -303,3 +303,7 @@ for very large JSON, trading the buffered safety net for lower memory.
 
 **Hide sensitive fields.** Run `ExcludeFields`/`OnlyFields` before `JSON` so a
 password or token never reaches the encoder.
+
+## Release v2.3.2
+
+Recognize single-value headers regardless of letter case.

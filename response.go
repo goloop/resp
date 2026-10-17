@@ -147,7 +147,7 @@ func (r *Response) Header() http.Header {
 // returns the modified response.
 func (r *Response) SetHeader(key string, value ...string) *Response {
 	// If the header can contain only one value, use first value only.
-	if _, single := singleHeaders[key]; single && len(value) > 0 {
+	if _, single := singleHeaders[http.CanonicalHeaderKey(key)]; single && len(value) > 0 {
 		r.httpWriter.Header().Set(key, value[0])
 		return r
 	}
@@ -161,7 +161,7 @@ func (r *Response) SetHeader(key string, value ...string) *Response {
 // returns the modified response.
 func (r *Response) AddHeader(key string, value ...string) *Response {
 	// If the header can contain only one value, use first value only.
-	if _, single := singleHeaders[key]; single && len(value) > 0 {
+	if _, single := singleHeaders[http.CanonicalHeaderKey(key)]; single && len(value) > 0 {
 		r.SetHeader(key, value[0])
 		return r
 	}
